@@ -147,7 +147,7 @@ flowchart TD
 
 An edge describes a relationship, not a security verdict. Solid edges have a stated supporting basis; dashed edges are inferred or unverified. An external dependency can have an evidenced call relationship while its internals remain uninspected.
 
-Replace this structural example with actual dependencies. Split runtime/service and package/build views if that improves readability; keep the same register and unique node IDs.
+Replace this structural example with actual dependencies. Split runtime/service, package/build, and CI/CD trust views if that improves readability; keep the same register and unique node IDs. For reviewed pipelines, connect trigger/input, job, runner/identity, artifact, gates, and target environment using explicit relationship labels. Link privileged transitions and unavailable platform settings to the per-job risk table and E/F/U records; do not invent a run from a YAML definition.
 
 ```mermaid
 flowchart LR

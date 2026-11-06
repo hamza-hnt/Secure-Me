@@ -10,14 +10,14 @@ The skill and its documentation are written in English. Reports default to Engli
 
 ## What this repository contains
 
-This repository contains the source of the `preprod-security-audit` skill: instructions, a branching questionnaire, nine audit modules, evidence and prioritization rules, and a Markdown report template.
+This repository contains the source of the `preprod-security-audit` skill: instructions, a branching questionnaire, nine audit modules, a 35-domain coverage map, scanner execution procedures, evidence and prioritization rules, and a Markdown report template.
 
 It is currently a **skill source repository**. It does not provide an npm package, CLI, hosted scanner, or automated remediation engine. npm packaging is planned for a later iteration; there is no npm installation command or publishing workflow yet.
 
 ## What the skill does
 
-1. **Discovers context** from accessible source, manifests, lockfiles, deployment configuration, infrastructure declarations, workflows, and documentation.
-2. **Asks only material unanswered questions** about the product, deployment, identities, sensitive data, integrations, available evidence, and release constraints.
+1. **Establishes the review scope**, including whether the user wants the repository examined. An existing request to audit the repository already answers that question.
+2. **Discovers context and asks only material unanswered questions** using in-scope source, manifests, lockfiles, deployment declarations, workflows, documentation, and the user's product/release constraints.
 3. **Selects applicable controls** instead of applying every technology-specific check to every project.
 4. **Reviews available evidence** across source code, declared configuration, observed environments, and documented processes.
 5. **Qualifies findings** by technical severity, business impact, confidence, correction priority, and release consequence.
@@ -28,16 +28,16 @@ The skill can work with a repository alone. Runtime, cloud, identity-provider, a
 
 ## Audit coverage
 
-The nine modules contain **160 original audit controls**. Each control describes applicability, what to inspect, expected evidence and limitations, and correction/retest criteria.
+The nine modules contain **167 original audit controls**. Each control describes applicability, what to inspect, expected evidence and limitations, and correction/retest criteria. The [coverage map](preprod-security-audit/references/coverage-map.md) explicitly traces the original **35 security domains** to their control IDs across seven core modules, plus two conditional AI/client modules. Domains, module files, and automated checks are different units.
 
 | Module | Controls | Coverage |
 | --- | --- | --- |
 | [Architecture](preprod-security-audit/references/modules/architecture.md) | ARCH-001–018 | Assets, exposure, trust boundaries, tenant/data flows, business abuse, shared responsibility, requirements, and architectural drift. |
 | [Identity and access](preprod-security-audit/references/modules/identity-access.md) | IAM-001–016 | Enrollment, authentication, MFA, recovery, sessions, OAuth/OIDC/SAML, authorization, tenant isolation, support access, and service identities. |
 | [Application and API](preprod-security-audit/references/modules/application-api.md) | APP-001–020 | Input/output handling, injection, browser controls, APIs, SSRF, files, webhooks, business logic, concurrency, resource limits, errors, and caching. |
-| [Data and secrets](preprod-security-audit/references/modules/data-secrets.md) | DATA-001–016 | Data lifecycle, database/storage access, secrets, cryptography, telemetry, exports, test data, and key management. |
-| [Infrastructure and deployment](preprod-security-audit/references/modules/infrastructure-deployment.md) | INFRA-001–016 | Cloud IAM, network/edge/DNS, production settings, hosts, containers, Kubernetes, serverless, managed backends, IaC, and support access. |
-| [Supply chain](preprod-security-audit/references/modules/supply-chain.md) | SC-001–015 | Repository controls, dependencies, advisories, installers, CI trust, runners, artifacts, registries, provenance, and deployment authority. |
+| [Data and secrets](preprod-security-audit/references/modules/data-secrets.md) | DATA-001–017 | Data lifecycle, storage access, secrets, cryptography, telemetry, exports, key management, hardcoded credentials, and unsafe secret fallbacks. |
+| [Infrastructure and deployment](preprod-security-audit/references/modules/infrastructure-deployment.md) | INFRA-001–019 | Cloud IAM, network/edge/DNS, hosts, containers, Kubernetes, serverless, IaC, fixed environment/security values, configuration precedence, and fail-safe defaults. |
+| [Supply chain](preprod-security-audit/references/modules/supply-chain.md) | SC-001–018 | Repository/dependency controls, CI/CD definition traversal, input trust, runners, secrets, artifacts, gate integrity, and deployment target/state binding. |
 | [Operations and resilience](preprod-security-audit/references/modules/operations-resilience.md) | OPS-001–015 | Logs, alerts, cost/availability controls, failures, backups, restoration, incidents, revocation, rollback, and ongoing vulnerability management. |
 | [AI and agents](preprod-security-audit/references/modules/ai-agents.md) | AI-001–020 | Prompt injection, RAG, tools/MCP, delegated authority, approvals, output handling, exfiltration, memory, budgets, and shutdown. |
 | [Mobile and desktop](preprod-security-audit/references/modules/mobile-desktop.md) | CLIENT-001–024 | Mobile, desktop, and extension storage, permissions, links, bridges, IPC, local services, release artifacts, and updates. |
@@ -47,6 +47,12 @@ Hosting branches cover static/CDN hosting, managed platforms, backend-as-a-servi
 ## Adaptive questionnaire
 
 [The questionnaire](preprod-security-audit/references/scoping-questions.md) is a routing mechanism, not a mandatory form.
+
+If repository review has not already been included, it asks:
+
+> Would you also like me to inspect your repository for security issues in its source code, hardcoded values, configuration, dependencies, and CI/CD pipelines?
+
+The choices are **the repository**, **selected paths or pipelines**, or **supplied architecture/deployment evidence only**. An explicit repository/code-audit request already settles the choice; the skill does not ask again. If the user declines or the optional choice remains pending, it continues only the independently agreed evidence review. It records repository files/history, pipeline definitions/settings, and scanner/network mode separately.
 
 The first pass resolves a short set of high-impact topics:
 
@@ -90,6 +96,43 @@ Write the report to /path/to/my-project/security-audits/release-review.md.
 
 No specific scanner or connected service is required. Available tools can extend the review, but unavailable tools and failed checks must appear in the coverage limits. The skill does not install or run project dependencies just to discover the stack.
 
+## Hardcoded values and configuration
+
+The review explicitly follows values from definition to use:
+
+- **DATA-005 / DATA-017:** embedded credentials, unsafe secret fallbacks, scoped `.env`/history inspection, encoded credentials, build arguments, and public client bundles.
+- **INFRA-017:** fixed environment endpoints, accounts, regions, storage resources, and destinations captured at build time.
+- **INFRA-018:** fixed administrator/tenant identities, privilege shortcuts, origins, redirect/token trust, authentication/TLS toggles, and security limits.
+- **INFRA-019:** configuration precedence, missing/empty values, unsafe defaults, malformed booleans/numbers, overrides, and runtime reload behavior.
+
+A constant is not automatically a vulnerability. The report must show a security consequence or unmet requirement. Moving a value to an environment variable does not repair missing authorization, revoke an exposed credential, or protect a secret embedded in a public build.
+
+## CI and CD pipeline review
+
+When repository review is included, discovered CI/CD definitions and their in-scope dependencies are reviewed by default. A narrower or explicit exclusion is preserved.
+
+The supply-chain module covers GitHub Actions, GitLab CI, Jenkins, Azure Pipelines, CircleCI, Bitbucket Pipelines, Buildkite, and Google Cloud Build entry points. It follows reusable/local actions, includes, templates, scripts, generated-definition sources, and downstream pipelines; inaccessible remote/generated definitions remain gaps.
+
+Checks include untrusted PR/fork/manual input, code checkout and shell interpolation, token/secret/OIDC authority, runner isolation, mutable execution dependencies, cache/artifact poisoning, required-check failure/skip behavior, production approvals and bypasses, exact artifact promotion, environment selection, infrastructure plans, migrations, and rollback.
+
+The report includes a **per-job risk and evidence table** and represents the pipeline's trigger, jobs, identities, artifacts, gates, and target environments in the dependency section. Reading YAML does not establish effective platform permissions or a successful run. Reviewing a pipeline does not trigger or deploy it.
+
+## Tool-assisted review
+
+[Scanner execution procedures](preprod-security-audit/references/tooling.md) provide concrete commands, prerequisites, configuration handling, result interpretation, and evidence normalization:
+
+| Tool / procedure | Purpose | Boundary |
+| --- | --- | --- |
+| Gitleaks | Current-file and selected Git-history secret detection | Redacted results, auditor-controlled configuration, explicit history and exclusion limits. |
+| Semgrep CE | Source rules using reviewed local rule files | Target/inline suppressions reviewed; parsing errors, unsupported paths, and timeouts remain visible. |
+| Trivy | Filesystem/image vulnerabilities and IaC misconfigurations | Explicit scanners and cache freshness; declared/installed/artifact inventories distinguished. |
+| ZAP passive plan | Scoped crawling and passive analysis through the Automation Framework | Contacts the application and can cause effects; requires its own established live-test scope. |
+| ZAP active plan | Selected active tests against an agreed environment | Separate from passive analysis and source review; bounded attack scope and stop conditions. |
+
+These are executable **procedures for the agent**, not a bundled scanner service or npm runner. The agent uses available trusted tools within the chosen scope; manual-only/offline choices are respected. Missing tools, rules, caches, access, or compatible flags are recorded with a useful manual/evidence fallback. No result is invented and no proposed command is counted as a completed scan.
+
+Scanner logs/JSON are private working evidence. The report includes only minimal redacted findings and records actual versions, rules/advisory dates, targets, suppressions, exits, errors, and coverage. Tool output is contextualized against code, configuration, and impact before it becomes a confirmed finding.
+
 ## Report output
 
 By default, a new report is written in the audited project:
@@ -106,7 +149,7 @@ The user can choose another destination. Existing reports are preserved. Reports
 
 1. Executive assessment and bounded readiness recommendation.
 2. Calibrated context and question responses.
-3. Scope, authorization, module selection, and performed checks.
+3. Scope, repository choice, module selection, performed checks, scanner execution register, and per-job CI/CD risk inventory.
 4. Per-control coverage with evidence and limitations.
 5. Analysis path graph and node/edge registers.
 6. Analyzed dependency graph and component/package inventory.
@@ -167,6 +210,8 @@ secureme/
     │   ├── scoping-questions.md
     │   ├── audit-method.md
     │   ├── findings-and-priorities.md
+    │   ├── coverage-map.md
+    │   ├── tooling.md
     │   └── modules/
     │       ├── architecture.md
     │       ├── identity-access.md

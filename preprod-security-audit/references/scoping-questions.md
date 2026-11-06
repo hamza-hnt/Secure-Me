@@ -40,7 +40,7 @@ Ask only for missing information that changes the chosen scope; infer provider/f
 | Configuration | Which security settings and destinations vary by environment? Which values are deliberately public or fixed, and what should happen when a required secret/setting is missing? | Calibrate hardcoded-value, unsafe fallback, server/client exposure, and configuration-precedence checks without requesting secret values. |
 | Scanner mode | Should the review use available local scanners as well as source inspection? Are rules/advisory downloads or access to an agreed live test environment already allowed? | Apply the tooling procedures within existing scope; an offline or manual-only request must remain offline or manual-only. |
 
-Record repository review, current-file/history coverage, pipeline-definition/settings coverage, and scanner/network mode as separate decisions. For a full repository review, discovered CI/CD definitions are included by default unless excluded; executing or rerunning them is a separate action.
+Record repository review, current-file/history coverage, pipeline-definition/settings coverage, and scanner/network mode as separate decisions. For a full repository review, discovered CI/CD definitions are included by default unless excluded; executing or rerunning them is a separate action. Use [scanner execution procedures](tooling.md) when applicable to the selected mode.
 
 For each material answer, keep:
 
@@ -81,7 +81,7 @@ Ask follow-ups only when an answer activates them. Do not repeat answered questi
 | VM or self-hosted | Who patches the host? How is administration authenticated? Which ports, users, services, and backups exist? | Add host/network/update/recovery checks. |
 | Containers or Kubernetes | Is orchestration managed? Who can access the control plane? What privileges, host mounts, service accounts, namespaces, and network policies exist? | Add workload isolation and control-plane checks. |
 | Multiple environments | Are accounts, secrets, databases, identity tenants, and deployment rights separated? Can preview/CI access production? | Trace cross-environment escalation and data leakage. |
-| No runtime access | Is a redacted effective-configuration export or deployment manifest available? Who can verify the remaining controls? | Continue source/config review and create explicit runtime unknowns. |
+| No runtime access | Is a redacted effective-configuration export or deployment manifest available? Who can verify the remaining controls? | Continue review of the evidence sources already in scope and create explicit runtime unknowns. |
 
 ## Identity and data branch
 
@@ -119,6 +119,6 @@ Ask follow-ups only when an answer activates them. Do not repeat answered questi
 
 - Missing business context can lower confidence or leave impact provisional; it does not erase a demonstrated technical defect.
 - Missing evidence becomes a `U-###` unknown with affected controls and a specific next action. Continue independent checks.
-- If target identity or authorization is ambiguous, stop only the affected active test until clarified. Existing explicit authorization remains valid; do not ask again for routine steps within it.
+- If target identity or authorization is ambiguous, stop only the affected activity until clarified, including repository inspection when that scope remains unresolved. Existing explicit authorization remains valid; do not ask again for routine steps within it.
 - If production configuration is unavailable, do not report deployment controls as satisfied from source declarations. A source-only report can still contain confirmed source defects.
 - If a critical decision depends on unresolved evidence, use the readiness rules in [findings and priorities](findings-and-priorities.md). An unanswered question cannot be silently converted into acceptance.

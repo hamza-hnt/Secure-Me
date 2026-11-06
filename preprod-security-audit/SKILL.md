@@ -18,6 +18,8 @@ Produce a decision-useful security assessment of the specified release. Explain 
 
 Always use [audit method](references/audit-method.md) and [findings and priorities](references/findings-and-priorities.md). Load module details only when their surface is present or needs investigation. Do not load every module simply because it exists.
 
+Use [the 35-domain coverage map](references/coverage-map.md) to relate the original assessment areas to control IDs. When tool-assisted checks are in scope, follow [scanner execution procedures](references/tooling.md) for Gitleaks, Semgrep CE, Trivy, and ZAP; select tools by evidence and availability, and record actual runs, errors, and omissions. A manual-only request does not activate scanners.
+
 | Surface | Module | Routing guidance |
 | --- | --- | --- |
 | Every assessment | [Architecture](references/modules/architecture.md) | Establish assets, trust boundaries, critical actions, exposure, and responsibility. |
@@ -51,7 +53,7 @@ Include both required Mermaid diagrams:
 1. **Analysis path graph:** the observable audit trail from scope and artifacts through performed checks to findings, supported conclusions, and gaps. Show what was inspected and where a check stopped. This is an evidence map, not private reasoning or an invented chronology.
 2. **Analyzed dependency graph:** the inspected components, package dependencies, services, identity systems, storage, and external integrations, with explicit edge types, evidence references, and inspection coverage. Include material uninspected boundaries as such.
 
-Build graphs from the ledgers using the graph contract in the audit method. Include node/edge tables so the report remains usable without Mermaid rendering. Split large dependency maps by runtime/service relationships and package/build relationships; keep both under the dependency section.
+Build graphs from the ledgers using the graph contract in the audit method. Include node/edge tables so the report remains usable without Mermaid rendering. Split large dependency maps by runtime/service, package/build, or CI/CD trust relationships under the dependency section. For reviewed pipelines, show trigger/input → job → runner/identity → artifact → environment, with actual gates, trust boundaries, and uninspected settings distinguished.
 
 The report must contain a prioritized correction plan, owners or unassigned roles, dependencies between fixes, acceptance tests, residual risks, and unresolved decisions. State a bounded readiness recommendation using the findings rules; the skill does not approve a deployment or certify compliance.
 
