@@ -9,9 +9,9 @@ Produce a decision-useful security assessment of the specified release. Explain 
 
 ## Calibrate before selecting checks
 
-1. Identify the repository, target release or commit, deployment target, available environments, and existing authorization. Preserve the user's scope and prior answers.
-2. Inspect accessible project metadata and documentation without executing project code. Record discovered facts separately from inferences and user statements.
-3. Read [scoping questions](references/scoping-questions.md). Ask only material unanswered questions, starting with a short batch; branch based on product, exposure, hosting, identity, data, and available access. Continue independent checks while waiting. Do not infer permission from silence.
+1. Identify the requested assessment, target release or commit, deployment target, available evidence, and existing authorization. Preserve the user's scope and prior answers.
+2. Read [scoping questions](references/scoping-questions.md). Resolve Q-00 before inspecting repository contents if repository review has not already been requested or clearly included. A request to audit the repository or code already answers it; do not ask again. If the user excludes repository review, work from the selected documents/configuration/runtime evidence and record the limit.
+3. Inspect only in-scope project metadata and documentation without executing project code. Record facts separately from inferences and user statements. Ask a short batch of material remaining questions and branch by product, exposure, hosting, identity, data, and available access. Continue independently authorized work while waiting; silence does not answer an unresolved scope choice.
 4. Record a scope snapshot, selected modules, applicable control IDs, permitted checks, and unresolved questions in the report. Update this snapshot when answers change the scope.
 
 ## Route to relevant modules
@@ -25,7 +25,7 @@ Always use [audit method](references/audit-method.md) and [findings and prioriti
 | Web interfaces, APIs, workers, files, or integrations | [Application and API](references/modules/application-api.md) | Select controls for actual input, output, protocol, and business paths. |
 | Data, credentials, cryptography, databases, or storage | [Data and secrets](references/modules/data-secrets.md) | Include credentials and metadata even when personal data is absent. |
 | A deployed service or planned deployment | [Infrastructure and deployment](references/modules/infrastructure-deployment.md) | Match the provider and deployment model; distinguish intended configuration from observed runtime. |
-| Source, dependencies, build, or release process | [Supply chain](references/modules/supply-chain.md) | Check source-to-artifact provenance and direct/transitive dependencies within the available evidence. |
+| Source, dependencies, build, or release process | [Supply chain](references/modules/supply-chain.md) | When repository review is included, inspect discovered CI/CD definitions, their scripts/templates, trust transitions, and deployment gates without waiting for a second permission question. Effective platform settings remain a separate evidence source. |
 | A service entering or already in operation | [Operations and resilience](references/modules/operations-resilience.md) | Assess detection, recovery, incident handling, availability, and ownership. |
 | LLMs, RAG, AI tools, agents, or MCP | [AI and agents](references/modules/ai-agents.md) | Review model inputs, data access, delegated authority, outputs, and resource limits. |
 | Mobile, desktop, or browser-extension client | [Mobile and desktop](references/modules/mobile-desktop.md) | Select platform sections and audit the backend separately. |
@@ -35,6 +35,7 @@ For unsupported specialist surfaces, such as industrial equipment or custom hard
 ## Examine and record
 
 - Follow the audit method's evidence, authorization, and execution rules. An audit request authorizes analysis and report creation; it does not automatically authorize production changes, destructive probes, or publishing sensitive results.
+- A repository review covers the agreed files, source paths, manifests, relevant history, and CI/CD definitions. It includes hardcoded secrets, unsafe fallback values, environment-specific destinations, and fixed security/identity policy. Honor narrower path/history exclusions; do not label ordinary constants as vulnerabilities without a security consequence.
 - Maintain an evidence ledger, control matrix, findings, unknowns, audit-path edges, and dependency edges while working. Tie all material claims to exact source locations or observations and the inspected version/environment.
 - Treat scanner output as a lead until contextualized. Trace relevant callers, guards, data paths, configuration, and deployment assumptions before assigning a confirmed defect or release consequence.
 - Use the same control ID in coverage, findings, remediation, and graphs. Deduplicate findings with the same underlying cause while preserving affected surfaces.

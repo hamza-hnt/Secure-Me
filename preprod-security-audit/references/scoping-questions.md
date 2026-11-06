@@ -4,7 +4,43 @@ Use this reference to resolve information that changes the assessment. It is a b
 
 ## Discover, qualify, then ask
 
-Read accessible manifests, lockfiles, deployment files, CI workflows, infrastructure declarations, architecture notes, and previous answers first. Do not execute scripts to discover the stack. Do not assume a file represents the actual deployment.
+First determine whether repository inspection is in scope using Q-00 below. An explicit or clearly implied request to review the repository/code is sufficient; retain existing authorization instead of asking for it again. A working directory or a repository mentioned as background does not by itself settle an otherwise unclear scope.
+
+Once the scope is established, read the selected manifests, lockfiles, deployment files, CI workflows, infrastructure declarations, architecture notes, and previous answers. Without repository scope, use only the independently selected documents, exports, or environment evidence. Do not execute scripts to discover the stack or assume a file represents the actual deployment.
+
+## Q-00 — Include repository security review?
+
+When this choice is unanswered, ask:
+
+> Would you also like me to inspect your repository for security issues in its source code, hardcoded values, configuration, dependencies, and CI/CD pipelines?
+
+Offer these choices, adapting to any boundaries already given:
+
+| Choice | Included work |
+| --- | --- |
+| Yes, review the repository (recommended when preparing a code release) | Review the identified repository/revision, relevant source/configuration/dependencies, and discovered CI/CD definitions. Establish path/history boundaries in the follow-up below. |
+| Only selected paths or pipelines | Review the named services, files, diff, or pipeline definitions and related paths needed to explain their behavior; clarify before expanding beyond the selected boundary. |
+| No, use the supplied architecture/deployment evidence only | Do not inspect repository contents or run repository scanners. Record code and pipeline-definition coverage as excluded or not verified, not satisfied. |
+
+If the user already asked to audit their repo, record `included — user-requested` and proceed. If they explicitly exclude it, record `excluded — user-requested` and do not ask again. If the choice remains pending, continue only the other established parts of the assessment. Do not use silence as consent for the optional review.
+
+Repository review is distinct from running the application or its pipelines. It does not imply installing dependencies, triggering workflows, deploying, uploading source to a scanning service, or probing a live URL.
+
+## Repository and pipeline follow-up
+
+Ask only for missing information that changes the chosen scope; infer provider/file locations from in-scope evidence when possible.
+
+| Topic | Question | Consequence |
+| --- | --- | --- |
+| Target | Which local path or repository, branch/commit, services, or changed paths should be reviewed? | Bind findings and graphs to an identified snapshot; do not silently expand to neighboring repositories. |
+| Files and history | Is the review limited to the current checkout or a diff? Is relevant local Git history included? Which generated, vendored, untracked, ignored, or local configuration files are excluded? | Define file/history coverage, including whether secret history or local `.env` files were inspected. Never promise a full history scan from a shallow checkout. |
+| Review depth | Is this a targeted change review, a general pre-release review, or an assessment against specified controls? Is there a time/depth constraint? | Select controls and sampling explicitly; a targeted review is not a whole-system verdict. |
+| CI/CD coverage | Which CI and CD systems build, test, publish, migrate, or deploy this release? Are workflows, reusable templates, external definitions, and redacted platform settings available? | Follow discovered definitions and scripts; identify unavailable included pipelines/settings as gaps. Do not request permission again to read files already inside the chosen repo scope. |
+| Pipeline trust | Can forks, external PRs, manual inputs, or other repositories trigger jobs? Which jobs obtain secrets, cloud identities, signing rights, or production access? | Trace untrusted input through privileged CI/CD paths and cross-repository trust. |
+| Configuration | Which security settings and destinations vary by environment? Which values are deliberately public or fixed, and what should happen when a required secret/setting is missing? | Calibrate hardcoded-value, unsafe fallback, server/client exposure, and configuration-precedence checks without requesting secret values. |
+| Scanner mode | Should the review use available local scanners as well as source inspection? Are rules/advisory downloads or access to an agreed live test environment already allowed? | Apply the tooling procedures within existing scope; an offline or manual-only request must remain offline or manual-only. |
+
+Record repository review, current-file/history coverage, pipeline-definition/settings coverage, and scanner/network mode as separate decisions. For a full repository review, discovered CI/CD definitions are included by default unless excluded; executing or rerunning them is a separate action.
 
 For each material answer, keep:
 
@@ -73,6 +109,7 @@ Ask follow-ups only when an answer activates them. Do not repeat answered questi
 | Topic | Questions | Result |
 | --- | --- | --- |
 | Delivery | Who can modify source, CI workflows, secrets, registries, and production releases? What artifact will actually be deployed? | Connect repository controls to build and deployment authority. |
+| CI/CD evidence | Are platform-side token defaults, protected environments, approvals, branch/tag restrictions, runners, OIDC trust policies, and relevant run records available read-only? | Distinguish pipeline YAML from effective CI/CD permissions and release enforcement. Missing settings are evidence gaps. |
 | Detection | Which security events generate alerts, who receives them, and what evidence shows they work? | Assess detection operation rather than configuration alone. |
 | Recovery | When was the last restoration tested? Who can isolate the service, revoke credentials/sessions, and roll back safely? | Assess incident/recovery readiness and recovery dependencies. |
 | Release decision | What is the target date? Are there release criteria, previous findings, accepted risks, or required reviewers? Who owns the release decision? | Prioritize fixes without weakening findings to meet a date. |

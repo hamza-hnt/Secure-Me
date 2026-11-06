@@ -34,6 +34,8 @@ If counts are useful, report confirmed findings and provisional leads separately
 
 | Topic | Answer | Basis and source | Audit consequence / unanswered follow-up |
 | --- | --- | --- | --- |
+| Repository review choice | {{included / selected paths / excluded / pending; user-requested or answer to Q-00}} | {{user statement or existing task scope}} | {{permitted paths, history, files, and exclusions}} |
+| CI/CD review and scanner mode | {{included pipeline definitions/settings; manual/local/offline/network mode}} | {{basis; source}} | {{unavailable definitions/settings; allowed checks}} |
 | Product and critical actions | {{answer}} | {{basis; E-ID or user statement}} | {{modules/impact}} |
 | Hosting and deployment model | {{provider; named services; VM/PaaS/serverless/container/etc.}} | {{basis; source}} | {{responsibility boundary}} |
 | Components and environments | {{frontend/API/jobs/stores; dev/staging/prod}} | {{basis; source}} | {{separation/exposure}} |
@@ -50,6 +52,8 @@ Add rows for relevant conditional answers. Record unknowns explicitly and link m
 ### Target and authorization
 
 - Included components and revisions: {{list}}.
+- Repository boundary: {{selected paths; current files/diff; local history range/completeness; ignored/untracked/generated/vendor coverage; or explicitly excluded}}.
+- CI/CD boundary: {{providers; discovered definitions/scripts/includes; platform settings/run evidence; unavailable or excluded surfaces}}.
 - Permitted environments, identities, and methods: {{existing authorization and boundaries}}.
 - Active-test limits and stop conditions, if applicable: {{rate, data, allowed effects, boundaries}}.
 - Exclusions and reasons: {{including specialist surfaces outside supported coverage}}.
@@ -68,6 +72,22 @@ Add rows for relevant conditional answers. Record unknowns explicitly and link m
 | {{source trace / configuration review / advisory lookup / runtime test}} | {{tool/rules/data date, if applicable}} | {{target; E-ID}} | {{completed / partial / failed / skipped}} | {{specific limitation}} |
 
 State which checks did not run and why. Reading a test file is not executing it; loading an SDK is not checking its provider settings.
+
+### Scanner execution register
+
+Use this table when scanners are considered; for manual-only reviews, state that choice and the resulting limits. Record actual invocations, not commands merely proposed.
+
+| Tool / version | Reviewed configuration / rules / advisory date | Target / files / history or URL | Network and side effects | Exit / completion / errors | Redacted evidence / limitations |
+| --- | --- | --- | --- | --- | --- |
+| {{scanner and version}} | {{config/rule source and revision; data freshness; reviewed suppressions}} | {{actual coverage}} | {{local scan / downloads / live requests; authorized scope}} | {{exit code; completed/partial/failed/skipped; finding count separately}} | {{E-IDs; protected result location; skipped files and errors}} |
+
+### CI/CD pipeline risk inventory
+
+Include when pipeline definitions or settings are in scope. Otherwise state the exclusion or missing evidence. Follow local and reusable definitions; do not imply that reading YAML verifies effective platform settings.
+
+| Pipeline / job and definition | Trigger and input trust | Runner and identity / permissions | Secrets and external execution | Artifact / downstream environment | Gates and bypass evidence | Controls / findings / unknowns |
+| --- | --- | --- | --- | --- | --- | --- |
+| {{provider; path/revision; job; includes/scripts}} | {{PR/fork/branch/tag/manual/upstream event; attacker-controlled fields}} | {{runner isolation; token/OIDC/service-account scope}} | {{secret availability; reviewed external actions/templates; no values}} | {{producer/revision/digest; target and state changes}} | {{required checks; failure/skip behavior; approvals; actual platform evidence or gap}} | {{control IDs; E/F/U IDs}} |
 
 ## 4. Control coverage
 
