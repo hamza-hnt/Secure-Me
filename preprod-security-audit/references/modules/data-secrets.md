@@ -13,6 +13,7 @@ Use [the audit method](../audit-method.md) and [finding rules](../findings-and-p
 - Trace sensitive data through queries, serialization, telemetry, export, deletion, and third-party calls. Include derived copies, embeddings, thumbnails, and temporary files when present.
 - Record encryption/key-management evidence at the correct layer. Provider defaults, source declarations, and operational configuration are different evidence classes.
 - Collect minimal, redacted evidence. Do not print secret values, tokens, private keys, customer records, or credential-bearing URLs in commands, reports, screenshots, or graphs.
+- For scoped automated discovery, use [tool selection and execution guidance](../tooling.md). Record which working-tree files, history range, and supplied artifacts were actually checked; a scanner is not a substitute for tracing how a candidate value is used.
 
 ## Controls
 
@@ -47,7 +48,7 @@ Use [the audit method](../audit-method.md) and [finding rules](../findings-and-p
 ### DATA-005 — Secret discovery and exposure evidence
 
 - **Applies:** Repositories, configuration, histories, images, logs, or build artifacts may contain credentials.
-- **Inspect:** Scoped secret scans and relevant history/artifacts available within the audit; distinguish placeholders, public identifiers, synthetic fixtures, and plausible secrets.
+- **Inspect:** Scoped secret scans and relevant history/artifacts available within the audit. State whether coverage includes tracked files, accessible untracked/ignored `.env` and `.env.*` files, example configuration, and the selected Git history range; do not assume the scanner includes these. Distinguish placeholders, public identifiers, synthetic fixtures, and plausible secrets. Ignoring a file does not remove previously committed contents or prevent inclusion in an artifact.
 - **Evidence and limits:** Record location, type, exposure context, and a non-sensitive identifier only. A pattern match is a candidate; never authenticate with a found secret or upload it to a validation service.
 - **Correct and retest:** For confirmed exposure, revoke/rotate through the owner and remove dissemination paths; verify clean artifacts and revocation evidence. Deleting the current line does not invalidate an exposed credential.
 
@@ -128,6 +129,13 @@ Use [the audit method](../audit-method.md) and [finding rules](../findings-and-p
 - **Evidence and limits:** Record key identifiers/policy metadata only where safe; do not export key material. Document the expected impact of key loss, revocation, and signing-key rotation.
 - **Correct and retest:** Define lifecycle ownership and safe migration; verify approved rotation/recovery evidence covers existing ciphertext and token validation without retaining retired authority indefinitely.
 
+### DATA-017 — Hardcoded credentials and unsafe secret fallbacks
+
+- **Applies:** Source, configuration, bootstrap/migration code, install/build definitions, or shipped assets can supply an authentication credential, signing/encryption key, or privileged service secret.
+- **Inspect:** Trace literal, encoded, concatenated, and embedded credential candidates to their consumers; encoding such as Base64 is not secret protection. Examine missing/empty-configuration fallbacks, shared development credentials, seeded administrative accounts, and test/demo values that can reach a release path. Follow build arguments, image environment declarations, copied `.env` files, generated configuration, bundles/source maps, and framework-designated public client variables to determine whether a value becomes readable outside its intended trust boundary. Review the actual framework/version exposure rules rather than relying on a variable's name.
+- **Evidence and limits:** Use DATA-005 for discovery scope and exposure evidence, DATA-006 for delivery/lifecycle, and SC-015 for artifact dissemination; deduplicate the same root cause. Record a redacted definition, use site, fallback condition, build/runtime stage, intended audience, and inspected artifact/configuration. A public identifier, inactive synthetic fixture, or constant without secret authority is not automatically a vulnerability. Source can prove an unsafe fallback while its deployment activation remains unknown. Do not reveal decoded values or use a discovered credential against a service; unavailable history, generated artifacts, or effective settings remain explicit gaps.
+- **Correct and retest:** Remove unsafe embedded credentials and fallback authority; use appropriately scoped secret delivery and keep privileged secrets out of public client configuration and build outputs. Revoke/rotate credentials when exposure warrants it; moving an exposed value into `.env` does not revoke it, and moving a secret into a public build variable does not protect it. Make a missing/invalid required secret fail with a redacted error or disable the dependent privileged capability safely. Within authorized execution scope, use synthetic credentials to check valid, absent, empty, and development-mode cases and inspect resulting artifacts without real secrets; otherwise verify the code path and leave runtime/build behavior unverified. Confirm any required revocation through owner-provided evidence, not by testing the discovered credential.
+
 ## Graph contributions and completion
 
 In the analysis-path graph, show the schemas, stores, policies, flows, configurations, and redacted samples actually inspected, linked to evidence and outcomes. Mark unavailable runtime policy or lifecycle evidence as `U-###` rather than a successful check.
@@ -143,4 +151,7 @@ Record excluded stores and copies, incomplete history scans, unknown retention, 
 - [OWASP Cryptographic Storage Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Cryptographic_Storage_Cheat_Sheet.html).
 - [OWASP Password Storage Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html).
 - [OWASP Logging Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html).
+- [CWE-798: Use of Hard-coded Credentials](https://cwe.mitre.org/data/definitions/798.html) — classify confirmed credential use when the weakness matches, not every constant or scanner hit.
+- [Docker build secrets](https://docs.docker.com/build/building/secrets/) — build-secret handling when Docker is in scope.
+- [Vite environment variables and modes](https://vite.dev/guide/env-and-mode) — client exposure and build-time replacement when Vite is in scope; consult the corresponding official documentation for other frameworks.
 - Use official database, storage, secret-manager, and key-service documentation for the specific deployment and version; record applicable requirements supplied by the organization separately from technical guidance.

@@ -18,6 +18,45 @@ Distinguish these inventories:
 | Runtime/artifact evidence | Components or artifact observed at a target | Reachability of every vulnerable function or environment |
 | Source-level call trace | A plausible or demonstrated execution path | Runtime conditions not examined |
 
+## Static CI/CD review procedure
+
+A pipeline review starts with reading definitions and their called code. It does not authorize triggering, approving, retrying, rerunning, cancelling, or deploying a pipeline; installing its dependencies; generating dynamic configuration by executing project code; or changing CI settings. Preserve any explicit authorization already supplied. Read remote definitions, settings, and existing run evidence only when access and network use are in scope; otherwise record the missing boundary as `U-###`.
+
+1. **Discover entry points.** Inspect tracked files and accessible provider configuration for the locations below, custom pipeline paths, disabled/legacy workflows, and pipelines that publish or deploy without the main CI path. Record an absent definition separately from a provider whose settings are unavailable.
+2. **Follow execution definitions.** Read local/reusable actions, nested includes, shared libraries, templates, generators, scripts, package commands, Dockerfiles, and referenced build/deploy tools. Resolve the definition revision separately from the checked-out application revision. Record remote or generated definitions not inspected; do not invent their contents or execute a generator to fill the gap.
+3. **Reconstruct trust and authority per job.** Map event/caller and attacker-controlled inputs to checkout ref, conditions, matrix values, runner, job token, secrets, OIDC identity, scripts, caches/artifacts, and destinations. Inspect source-to-shell interpolation and indirect execution through repository scripts, plugins, and package hooks. A manual input, branch name, PR title, artifact, or generated matrix is not trusted merely because the platform delivers it.
+4. **Trace verification and release consumption.** Follow test/scan results into required checks, then follow the exact source and artifact digest into publication, promotion, configuration changes, migrations, and deployment. Inspect failure, skip, cancellation, rerun, rollback, and bypass branches. Establish which project/provider settings enforce the gate and who may change them.
+5. **Review proportionately and record gaps.** Prioritize production-capable jobs, signing/publication jobs, untrusted-to-privileged transitions, and jobs implementing release gates. Group equivalent matrix instances only when their trust, authority, and effects match. Record inspected jobs/definitions, selected variants, and omitted or inaccessible paths; do not extrapolate one safe job to the whole pipeline.
+
+| Provider / entry point candidates | Follow beyond the entry file |
+| --- | --- |
+| GitHub Actions: `.github/workflows/*.yml`, `*.yaml` | `workflow_call`, local `uses` paths and `action.yml`/`action.yaml`, composite/Docker actions, remote reusable workflows, privileged follow-up workflows, called scripts, repository/environment settings. |
+| GitLab CI: `.gitlab-ci.yml`, custom CI config path | Local/project/remote/component/template includes, `extends`, nested include ordering, child/downstream pipelines, generated YAML, `workflow`/job rules, protected variables/runners, project settings. |
+| Jenkins: `Jenkinsfile`, custom multibranch paths | Shared libraries and their revisions, loaded Groovy, shell/batch scripts, job/controller definitions, credentials bindings, agent selection, and plugin-dependent behavior. |
+| Azure Pipelines: `azure-pipelines.yml`, `*.yaml`, configured entry path | Templates, repository resources, stages/jobs, variable groups, service connections, agent pools, and resource-level approvals/checks. |
+| CircleCI: `.circleci/config.yml` | Orbs, reusable commands/executors, contexts, filters, setup workflows, continuation configurations, generated configuration, and project settings. |
+| Bitbucket Pipelines: `bitbucket-pipelines.yml` | Definitions, imports where used, pipes, scripts, manual/custom and branch/tag/PR paths, deployment environments, repository/workspace variables, and runners. |
+| Buildkite: `.buildkite/pipeline.yml`, configured YAML/script path | Uploaded/generated steps, plugins and hooks, triggered pipelines, block/input steps, agent queues, and pipeline/team settings. |
+| Google Cloud Build: `cloudbuild.yaml`, `cloudbuild.yml`, `cloudbuild.json`, configured path | Trigger definitions, substitutions/payload bindings, builder images, step scripts, service accounts, private pools, approval settings, artifacts, and deployment commands. |
+
+Interpret each provider's actual version and settings using its primary documentation. In GitHub Actions, distinguish `pull_request`, `pull_request_target`, `workflow_run`, and dispatch/call paths, then inspect the code/ref executed and effective permissions; event names alone do not prove a defect. In GitLab, a fork merge-request pipeline run in the parent project can combine fork-defined code with parent resources, so inspect its actual context. Azure resource checks are configured outside pipeline YAML. CircleCI continuation and Buildkite uploads can add executable steps beyond the entry file. For trigger-invoked Cloud Build, inspect the trigger's service account: its selection overrides a service account in the build configuration. Treat these as routing facts, not evidence that any particular target is misconfigured.
+
+### Per-job risk and evidence record
+
+Include a per-job table in the report when pipelines are in scope. One row may represent equivalent jobs only with an explicit grouping rationale; preserve distinct privilege boundaries. For each row capture:
+
+| Field | Required content |
+| --- | --- |
+| Pipeline / job / revision | Definition path and lines, job/stage ID, included definition revision, and selected matrix variant. |
+| Trigger and executed source | Event/caller, fork/branch/tag/ref, conditions, input origins, checkout repository and resolved revision when known. |
+| Runner and authority | Runner/agent trust and persistence, effective token permissions, secret access categories, OIDC/service identity, and unknown external policy; never credential values. |
+| Inputs and outputs | Scripts/actions, cache/artifact producers and consumers, integrity/provenance checks, package/image selectors, and trust transitions. |
+| Gate and target | Required validations and result handling, approvals/bypasses, artifact digest binding, target environment/account, configuration and migration effects. |
+| Result and risk | Applicable `SC-###` controls, per-surface control status, confirmed `F-###` or unresolved `U-###`, and concise preconditions/impact. A suspicious keyword is not a confirmed exploit. |
+| Evidence and coverage | `E-###`, source/configuration/run basis, actual inspection depth, executed checks if any, and inaccessible definitions/settings. |
+
+Keep declared job behavior separate from observed runs and effective service-side policy. Reuse the report's evidence/control registers rather than copying logs or assigning a security score to every job. If no pipeline evidence is available, explain the discovery scope and release-path gap; do not invent an empty or safe pipeline.
+
 ## Control catalog
 
 ### SC-001 — Repository ownership and protected changes
@@ -58,31 +97,31 @@ Distinguish these inventories:
 
 ### SC-007 — Untrusted contributions and workflow injection
 - **Applies:** CI triggered by pull requests, external contributions, issue content, manual inputs, or repository events.
-- **Check:** Trace untrusted content into shell commands, checkout selection, workflow files, actions, and artifact inputs. Review privileged follow-up workflows and external-PR code executed with base-repository privileges.
+- **Check:** Trace event payloads, PR titles/bodies, branch names, manual inputs, matrix values, and job outputs into shell/Groovy/PowerShell commands, checkout refs, paths, and action inputs. Inspect interpolation before execution, indirect calls into checked-out scripts/package hooks, fork PRs run with parent authority, and privileged follow-up jobs consuming untrusted artifacts.
 - **Evidence / limits:** Event semantics, workflow permissions, code checkout, and data flow; event names alone are insufficient to prove safe or unsafe execution.
 - **Correction / retest:** Separate untrusted builds from privileged stages and pass data without shell interpretation; validate representative untrusted inputs in an isolated test workflow, not a production deploy job.
 
 ### SC-008 — CI credentials and workload federation
 - **Applies:** Pipeline secrets, tokens, signing keys, or federated cloud access.
-- **Check:** Review default/job token permissions, secret scope, credential lifetime, federation issuer/audience/subject conditions, branch/environment restrictions, and access to production keys.
+- **Check:** Compare workflow/default and per-job token permissions, inherited secrets, checkout-persisted credentials, variable groups/contexts, service connections, and production signing/deploy rights. For OIDC, inspect issuer, audience, subject and applicable repository/ref/environment/workflow claims on the receiving trust policy, plus the resulting role permissions. Check fork, reusable-workflow, manual, and rerun contexts separately.
 - **Evidence / limits:** Workflow definitions plus effective provider trust policy; declaring an environment or short-lived token does not establish narrow authority.
 - **Correction / retest:** Limit rights and trust to intended jobs and environments; validate intended issuance and denied untrusted branch/repository contexts without exposing tokens.
 
 ### SC-009 — Runner isolation and persistence
 - **Applies:** Hosted or self-hosted build runners and build workers.
-- **Check:** Inspect reuse across trust levels, cleanup, host privileges, Docker sockets, shared workspaces, network reachability, and access to other jobs' credentials or artifacts.
+- **Check:** Inspect runner/agent selection controlled by inputs or matrices, reuse across trust levels, cleanup, host privileges, mounted Docker/runtime sockets, shared workspaces/volumes, network reachability, and access to other jobs' credentials or artifacts. Include job/service containers and persistent agent hooks.
 - **Evidence / limits:** Runner configuration and lifecycle evidence; an ephemeral job container may still share a privileged host or persistent cache.
 - **Correction / retest:** Isolate untrusted work, remove unnecessary host access, and ensure safe cleanup; verify a subsequent job cannot read prior sensitive state using non-sensitive test markers.
 
 ### SC-010 — Third-party actions and reusable workflows
 - **Applies:** External actions, reusable workflows, build plugins, or templates.
-- **Check:** Review immutable source selection where supported, owner trust, granted permissions, nested dependencies, update review, and what code a referenced release actually executes.
+- **Check:** Review immutable source selection where supported, resolved action/workflow/template revision, publisher trust, granted permissions, inherited secrets, nested definitions, builder images, update review, and executable entry points. Inspect local action metadata and scripts as code; a pinned outer action may still download mutable dependencies or execute caller-controlled content.
 - **Evidence / limits:** Resolved revision plus relevant code/metadata; pinning an action does not establish that its dependencies or behavior are safe.
 - **Correction / retest:** Pin and review critical execution dependencies, narrow permissions, and verify the updated workflow still performs the intended bounded task.
 
 ### SC-011 — Cache and artifact trust boundaries
 - **Applies:** Shared caches, intermediate artifacts, downloads, or multi-stage pipelines.
-- **Check:** Follow who can write/read caches and artifacts, key collisions, content validation, retention, and trust transitions from untrusted builds to privileged jobs.
+- **Check:** Follow cache writers/readers, restore prefixes and key collisions, artifact-producing repository/ref/run, names versus digests, download/extraction handling, retention, and trust transitions from untrusted builds into privileged jobs. Examine stale, cross-branch, fork-produced, and substituted inputs where the provider permits those paths.
 - **Evidence / limits:** Cache/artifact scope and consuming workflow logic; a filename or successful download is not proof of origin.
 - **Correction / retest:** Separate trust domains and verify origin/content before privileged use; demonstrate that an untrusted producer cannot replace trusted inputs.
 
@@ -100,7 +139,7 @@ Distinguish these inventories:
 
 ### SC-014 — Deployment authority and release gates
 - **Applies:** Automated or manual release processes.
-- **Check:** Identify who can deploy, alter gates, select artifacts, change production variables, or bypass checks. Trace whether required validations ran on the actual released revision.
+- **Check:** Identify who can deploy, modify environment branch/tag restrictions, approve their own changes, alter required checks or reviewers, change protected variables/service connections, select artifacts, or bypass gates. Inspect effective provider settings as well as YAML, and trace required validations to the released revision. Use SC-017 for gate result logic and SC-018 for target/state binding.
 - **Evidence / limits:** Pipeline runs, effective environment controls, deployment record, and exceptions; a green check on another commit does not validate this release.
 - **Correction / retest:** Bind gates to the release artifact and control bypass, then demonstrate a failed requirement blocks the relevant promotion path under the agreed policy.
 
@@ -110,6 +149,24 @@ Distinguish these inventories:
 - **Evidence / limits:** Redacted locations, safe identifiers, affected artifact/version, and exposure boundaries. Deleting a source file does not remove previous commits or image layers.
 - **Correction / retest:** Revoke exposed credentials where warranted, correct inclusion/build handling, and confirm newly built artifacts are clean; preserve investigation evidence through the appropriate owner.
 
+### SC-016 — Pipeline inventory and transitive definition coverage
+- **Applies:** Any CI/CD definition, externally configured pipeline, reusable job, or dynamic configuration contributes to the release.
+- **Check:** Reconcile discovered entry files with the release path; follow nested/local/remote includes, shared actions/libraries, generated steps, scripts, and downstream jobs. Record definition origins, revisions, overriding rules, conditional inclusion, and source checkout independently. Identify release-capable paths not using the expected pipeline.
+- **Evidence / limits:** File/line inventory, resolved definition references, supplied expanded configuration, and effective pipeline settings when available. A missing conventional filename does not prove no CI exists; reading a generator does not prove its generated job set.
+- **Correction / retest:** Make the release-relevant definition graph inspectable and owned; resolve missing dependencies or record their risk. Confirm each privileged/publication/deployment path maps to reviewed definitions and explicitly record unavailable generated/remote content.
+
+### SC-017 — Verification gate integrity
+- **Applies:** Tests, scanners, policy checks, attestations, or manual decisions are intended to block merge, publication, or deployment.
+- **Check:** Trace check dependencies and conclusions through conditions, path filters, matrix exclusions, optional jobs, skipped/cancelled runs, `continue-on-error`/`allow_failure` equivalents, shell exit masking, stale results, and result aggregation. Check that scans cover the intended target and fail as required; required-check names alone do not prove the intended revision/artifact was examined or that a failed/absent scan blocks release.
+- **Evidence / limits:** Job logic, exact command/exit handling, required-check policy, existing run outcomes, and artifact/revision linkage. An intentionally advisory scan is not automatically a defect; compare behavior with the stated release policy and distinguish deliberate non-blocking checks from accidental bypass.
+- **Correction / retest:** Make required results unambiguous and bind them to the selected release; reject missing or failed required evidence while preserving documented optional jobs. With authorized isolated fixtures or existing run records, verify failed, skipped, cancelled, stale, and mismatched-artifact cases cannot promote the release.
+
+### SC-018 — Deployment target and state-change binding
+- **Applies:** Jobs promote artifacts, deploy services, apply infrastructure, run migrations, change permissions/configuration, or perform rollback.
+- **Check:** Trace actor-supplied environment/account/region/namespace, branch/tag/ref, artifact version/digest, and variable/secret overrides into the actual command and credentials. Confirm the approved/tested artifact is the promoted artifact, target restrictions cannot be sidestepped by parameters, and reviewed infrastructure plans/configuration/migrations remain bound to the approved target. Inspect concurrent/stale deployments, rollback selectors, and migration or privilege side effects.
+- **Evidence / limits:** Deployment scripts and effective identities/targets, plan/artifact identity, existing promotion records, and rollback procedure. An environment name, approval button, mutable tag, or successful earlier test is insufficient evidence of exact target/state binding. Do not run apply, migrate, deploy, or rollback to inspect behavior.
+- **Correction / retest:** Constrain target selection and credential scope; bind approval/validation to immutable artifacts and reviewed state changes; control concurrent promotion and define compatible rollback. Verify mismatched targets/artifacts and stale plans are rejected through static policy evaluation, existing records, or separately authorized non-production checks. Coordinate recovery findings with operations.
+
 ## Graph contributions
 
 - Record the **observed audit traversal** through manifests, lockfiles, workflow definitions, advisories, build metadata, and deployment records. Link inspection nodes to `E-###`, relevant `SC-###` controls, `F-###` findings, and `U-###` gaps.
@@ -117,6 +174,8 @@ Distinguish these inventories:
 - Keep package dependency edges distinct from `builds`, `publishes`, `promotes`, and `deploys` relationships. A runtime service calling another service is a separate relationship from a library importing another library.
 - For a large graph, summarize clearly named groups and provide the exact examined paths in the adjacent inventory. State the source, inspected subset, exclusions, and unresolved resolution depth; never imply the visible diagram is a complete SBOM.
 - Do not label every package as analyzed because it was returned by a lockfile parser. Record the actual checks performed and their evidence.
+- Add a pipeline view when delivery is in scope: event/caller → definition/job → runner and identity → produced/consumed artifact → target environment. Label the distinct relations (`triggers`, `includes`, `executes`, `runs on`, `assumes identity`, `produces`, `consumes`, `promotes to`) rather than implying they are all package dependencies. A service may point to its deployment job with `deployed by`; an artifact producer points to the artifact with `produces`.
+- Include transitive definitions, privileged transitions, required verification/approval gates, and material uninspected provider settings. Annotate repository/ref, identity scope, artifact digest, environment, evidence basis, and inspection depth where known; connect risks/gaps to the same `SC-###`, `F-###`, and `U-###` records as the per-job table. Never publish secret values or invent an observed run from YAML.
 
 ## Reference selection
 
@@ -125,4 +184,12 @@ Use ecosystem/provider documentation and advisories matching the inspected compo
 - [NIST Secure Software Development Framework](https://csrc.nist.gov/Projects/ssdf): development and vulnerability-management practices.
 - [SLSA](https://slsa.dev/): source/build provenance and artifact integrity; select a version explicitly if mapping requirements.
 - [GitHub Actions secure use reference](https://docs.github.com/en/actions/reference/security/secure-use): GitHub-specific workflow and execution boundaries when that platform is used.
+- [GitHub workflow syntax](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax), [triggering events](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows), and [OIDC reference](https://docs.github.com/en/actions/reference/security/oidc): job result handling, event context, and trust claims; match the effective repository/provider settings.
+- [GitLab includes](https://docs.gitlab.com/ci/yaml/includes/) and [merge-request pipelines](https://docs.gitlab.com/ci/pipelines/merge_request_pipelines/): composed configuration, override ordering, fork/parent execution context, and protected resources.
+- [Jenkinsfile documentation](https://www.jenkins.io/doc/book/pipeline/jenkinsfile/): scripted execution, credentials, interpolation, and result handling; inspect applicable shared-library/plugin behavior separately.
+- [Azure Pipelines approvals and checks](https://learn.microsoft.com/en-us/azure/devops/pipelines/process/approvals?view=azure-devops): resource-managed controls outside YAML.
+- [CircleCI dynamic configuration](https://circleci.com/docs/guides/orchestrate/dynamic-config/): setup/continuation boundaries; inspect the actual generated or supplied continuation definition.
+- [Bitbucket Pipelines configuration reference](https://support.atlassian.com/bitbucket-cloud/docs/bitbucket-pipelines-configuration-reference/): pipeline entry points and execution configuration.
+- [Buildkite dynamic pipelines](https://buildkite.com/docs/pipelines/configure/dynamic-pipelines): uploaded/generated execution definitions and their origins.
+- [Cloud Build service accounts](https://docs.cloud.google.com/build/docs/securing-builds/configure-user-specified-service-accounts): build versus trigger identity configuration; obtain the effective trigger settings.
 - [CWE](https://cwe.mitre.org/about/index.html): weakness classification, not an advisory database or exploitability score.
