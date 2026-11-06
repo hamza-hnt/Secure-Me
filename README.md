@@ -151,7 +151,7 @@ Readiness recommendations are `BLOCKED`, `INSUFFICIENT EVIDENCE`, `READY WITH CO
 
 The modules use original, practical controls and link to relevant primary references, including OWASP ASVS, WSTG, API Security, MASVS and GenAI guidance; NIST digital identity guidance and SSDF; CIS Benchmarks; SLSA; and platform-specific documentation.
 
-They do not reproduce or claim complete conformance with those standards. The report records the editions, versions, advisories, and documentation actually consulted. Technical severity can use CWE and CVSS where appropriate; exploitation signals supplement local context rather than replacing it.
+They do not reproduce or claim complete conformance with those standards. The report records the editions, versions, advisories, and documentation actually consulted. Weaknesses can be classified with CWE; technical severity can use CVSS where appropriate. Exploitation signals supplement local context rather than replacing it.
 
 ## Repository layout
 
