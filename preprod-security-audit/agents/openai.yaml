@@ -1,0 +1,4 @@
+interface:
+  display_name: "Secure-Me Security Audit"
+  short_description: "Evidence-based security reviews before production"
+  default_prompt: "Use $preprod-security-audit to assess this project before production and write an evidence-based Markdown report with remediation and analysis and dependency graphs."
