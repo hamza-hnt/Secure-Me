@@ -54,6 +54,8 @@ Report one bounded recommendation, its target, and its coverage limits:
 
 If multiple conditions apply, prioritize known blockers, then critical evidence gaps. State pending fixes/decisions directly. Never issue an unconditional "secure" or "approved for production" verdict. A percentage score, lack of scanner alerts, or number of passed controls cannot override a blocker or material gap.
 
+Judge an evidence gap against the decision actually requested. For an explicitly source-only assessment, adequate source coverage may support `NO BLOCKER FOUND IN REVIEWED SCOPE` while deployment controls remain unknown; state that full production readiness was not assessed. When the user asks for a production readiness decision, missing critical deployment evidence can require `INSUFFICIENT EVIDENCE`. Do not silently narrow a production assessment to source-only to obtain a favorable label.
+
 An acceptance record needs the actual decision-maker, date, scope, rationale, conditions, expiration/review date, and evidence of the decision. Do not invent acceptance, owners, deadlines, or legal applicability. Proposed ownership is labeled as a role; unresolved acceptance remains a decision request. Keep accepted risk visible in findings and residual risk. Acceptance does not turn a technical defect into a satisfied control.
 
 ## Correction plan

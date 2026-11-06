@@ -1,6 +1,8 @@
 # Security readiness assessment — {{project}}
 
 > Authoring instructions: replace every `{{...}}` field and every illustrative graph node/edge with actual audit records. Remove this instruction block before delivery. Keep both graph sections and their accessible tables. If a section has no findings or applicable items, explain why rather than inventing examples. Use the evidence, status, graph, and readiness contracts in the skill references.
+>
+> Scale detail to the system and requested review depth. Keep required sections but use concise statements for empty results. Combine coverage rows only when their surface, status, evidence, and limits match, listing every covered control ID. Cross-reference repeated limitations; do not inflate a small audit by repeating the same unknown throughout the report.
 
 | Assessment metadata | Value |
 | --- | --- |

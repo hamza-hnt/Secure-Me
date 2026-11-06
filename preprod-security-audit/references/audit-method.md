@@ -35,6 +35,8 @@ Mask secrets and personal data before recording snippets. Use credential type, s
 
 Create a control matrix with control ID, applicable surface, status, evidence, finding/unknown IDs, and limits. Track every selected control. An unloaded module must appear in the module-scope summary with an exclusion reason or `not-verified`; it must not silently disappear.
 
+Scale report length to the assessed system. Controls with the same surface, status, evidence, and limitation can share one matrix row listing their IDs. Keep differing outcomes separate and retain the two graphs, registers, findings, and actionable plan. For small systems, summarize repeated limitations once and cross-reference them instead of repeating them in every section.
+
 Use [findings and priorities](findings-and-priorities.md) for status and readiness semantics. A confirmed weakness can cover multiple controls; one control can have multiple affected surfaces. If outcomes differ by surface, use separate matrix rows rather than an aggregate green result.
 
 Trace both successful and denied paths: caller identity, input origin, guard, object/data lookup, side effect, error path, and external boundary as relevant. Sample explicitly when exhaustive inspection is infeasible; record the selection and unreviewed remainder. Do not extrapolate a sampled pass to every endpoint or tenant.
