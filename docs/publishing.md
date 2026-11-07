@@ -6,7 +6,7 @@ The package is published from [hamza-hnt/Secure-Me](https://github.com/hamza-hnt
 
 The npm package must already exist before its owner can configure a trusted publisher in its package settings. If `secure-me-skill` has not been published yet, complete the bootstrap below first. Creating the workflow file alone does not configure npm or the GitHub environment.
 
-Create the GitHub environment **`npm`** in this repository. Configure its intended reviewers and release-tag access rules in GitHub; those settings are external to the YAML. The publish job uses this environment, while validation and tests use read-only repository permissions.
+Create the GitHub environment **`npm`** in this repository. Select deployment branches and tags, then add a **Tag** rule with the pattern **`v*`**. This repository's environment is configured that way. Configure required reviewers separately if the release process calls for them; those settings are external to the YAML. The publish job uses this environment, while validation and tests use read-only repository permissions.
 
 In the npm package's settings, add this GitHub Actions trusted publisher:
 
