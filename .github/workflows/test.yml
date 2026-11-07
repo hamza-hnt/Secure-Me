@@ -1,0 +1,56 @@
+name: Test package
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        description: Exact source commit to test
+        required: true
+        type: string
+      upload-release-artifact:
+        description: Preserve the Linux Node 24 archive for publication
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: ${{ matrix.os }} / Node ${{ matrix.node }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        node: ['22', '24', '26']
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.ref }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ matrix.node }}
+          package-manager-cache: false
+      - run: npm ci --ignore-scripts
+      - run: npm test
+      - run: npm run test:package
+      - run: npm run validate
+      - name: Record the tested release archive
+        if: inputs.upload-release-artifact && matrix.os == 'ubuntu-latest' && matrix.node == '24'
+        run: node scripts/release.mjs record
+      - name: Upload the tested release archive
+        if: inputs.upload-release-artifact && matrix.os == 'ubuntu-latest' && matrix.node == '24'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: npm-release-${{ github.run_id }}
+          path: |
+            .artifacts/package.tgz
+            .artifacts/release.json
+          include-hidden-files: true
+          if-no-files-found: error
+          overwrite: true
+          retention-days: 7
