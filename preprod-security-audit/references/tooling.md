@@ -8,6 +8,7 @@ Use these procedures when a relevant scanner is available and its execution fits
 | --- | --- | --- |
 | Local files; Git history only when included | Gitleaks current files and/or selected history | DATA-005, SC-015 |
 | Supported source languages and reviewed local rules | Semgrep CE local scan | Applicable APP/IAM/DATA controls; map each rule separately |
+| Existing target-matched SBOM; otherwise local package metadata/artifact | Dependency inventory and optional Trivy SBOM generation | SC-002–004; metadata for the dependency graph |
 | Lockfiles or installed-package metadata | Trivy filesystem vulnerability scan | SC-002–004 |
 | Existing release image archive | Trivy image vulnerability scan | SC-002–004, INFRA-009–010 |
 | IaC / deployment declarations | Trivy filesystem misconfiguration scan | Relevant INFRA controls; declarations only |
@@ -15,7 +16,7 @@ Use these procedures when a relevant scanner is available and its execution fits
 | Explicitly authorized active attack testing | Scoped ZAP active scan | Selected application controls; never implied by passive scope |
 
 1. Resolve the intended repository/revision, current-file versus history scope, deployment artifact, languages, and existing authorization. Inventory tracked, untracked, ignored, generated, vendored, submodule, and symlink boundaries before accepting scanner coverage.
-2. Discover trusted executables with `command -v gitleaks semgrep trivy docker`. Do not execute a repository-provided binary or let a target-controlled `PATH` select one. Record versions and inspect the installed subcommand's `--help`; these recipes describe documented capabilities, not a guarantee about an arbitrary installation.
+2. Discover trusted executables with `command -v gitleaks semgrep trivy docker`. Do not execute a repository-provided binary or let a target-controlled `PATH` select one. Verify executable/image provenance and applicable upstream security advisories **before even invoking `--version` when trust is unestablished**; unknown or suspect distributions remain unavailable, while an already verified distribution can proceed. Consult, for example, [Trivy's upstream advisories](https://github.com/aquasecurity/trivy/security/advisories). Record versions and inspect the installed subcommand's `--help`; these recipes describe documented capabilities, not a guarantee about an arbitrary installation.
 3. Run from a private work directory outside the target. Keep rules, configuration, output, and caches outside the scanned tree. Review inherited scanner settings without printing credentials or dumping the environment. Remove unreviewed scanner overrides from the child process; preserve explicitly needed trusted proxy/certificate settings.
 4. Do not install tools, fetch project dependencies, run hooks/builds, or start the application just to make these recipes work. Use existing tools/evidence or record the unavailable prerequisite. Never use `eval` or interpolate repository content into a command.
 5. Separate permission to inspect source from permission to contact advisory/rule registries, pull images, or probe an application. For strict offline work, use an existing network-isolated execution environment; scanner flags are not a network firewall.
@@ -109,15 +110,79 @@ With `--error`, exit `1` indicates findings; `0` alone is not complete coverage.
 
 ## Trivy: filesystem, image, and IaC evidence
 
-Prerequisites: trusted Trivy, supported inputs, and a reviewed cache containing the required vulnerability/Java databases or checks. Record `trivy --version`, cache database metadata dates, and help for `filesystem` and `image`. Missing/incompatible/stale data must remain visible; do not report a failed database initialization as a clean scan.
+Inspecting an existing SBOM needs no scanner. Trivy recipes require a trusted binary and supported inputs; vulnerability/IaC scans additionally need the relevant reviewed databases/checks. Inventory generation does not require a vulnerability database. Record `trivy --version`, relevant cache metadata dates, and help for `filesystem` and `image`. Missing/incompatible/stale data must remain visible; do not report failed initialization as a clean scan.
 
 Use a reviewed configuration outside the target. The empty configuration below has no target-supplied filters. Explicitly disable external ignore/secret configuration loading; do not load target templates, custom Rego, plugins, or executable modules. Check installed help for these flags before proceeding. [Configuration and precedence](https://trivy.dev/docs/latest/guide/configuration/).
 
 ```sh
-audit_trivy_cache='/absolute/path/to/reviewed-existing-trivy-cache'
+audit_trivy_cache='/absolute/path/to/reviewed-trivy-cache'
 printf '{}\n' > "$audit_work/trivy.yaml"
 mkdir -m 700 "$audit_work/empty-trivy-modules" || exit 1
 ```
+
+### Dependency inventory and SBOMs
+
+Use the lightest adequate evidence: **existing target-matched SBOM first**, then optional Trivy inventory generation, then a targeted optional tool only for a remaining gap. In manual-only mode, inspect supplied SBOM/manifest/lockfile evidence without executing generators. Do not install a generator, resolve/install dependencies, build an image, or fetch a remote SBOM as an incidental step.
+
+For a supplied SBOM, record its path/source, raw-file SHA-256, format/schema version, generator/version, generation time, subject identity and platform. Match it to the assessed revision/lockfile hashes or release artifact digest using provenance; a filename, tag, timestamp or valid schema alone cannot establish that match. Check whether the inputs changed after generation. Preserve mismatches/staleness as `U-###`; do not silently substitute a different release's inventory.
+
+Parse privately and validate against its **declared** schema with an already available trusted validator and local schema. Do not fetch `$schema`, external references or remote components automatically. Record parse/schema/reference-integrity results separately; missing validation support is an explicit limit, not permission to call parsing validation. Check unique component IDs, resolvable relationship references, root identity, omissions and completeness assertions. Use the applicable [CycloneDX specification](https://cyclonedx.org/specification/overview/) or [SPDX specification](https://spdx.github.io/spdx-spec/).
+
+Keep the evidence basis explicit:
+
+| Basis | What it establishes | What remains unproven |
+| --- | --- | --- |
+| Declared manifest | Requested packages/ranges and declared scope | Selected versions, installed or shipped contents |
+| Resolved lockfile | Recorded resolution for that input/workspace | Current install, platform-specific inclusion, release contents |
+| Installed package metadata | Packages identified in the inspected environment | Build inclusion, runtime loading, deployment equivalence |
+| Release artifact SBOM | Identified components of the matched artifact/platform | Complete detection, deployed identity, reachable vulnerable paths |
+
+If generation is useful and authorized, reuse the reviewed configuration above. The cache may be an empty private directory for non-Java inventory; do not make vulnerability-DB availability a prerequisite. Ensure neither the configuration nor the child environment supplies a scanner override (including `TRIVY_SCANNERS`); omit `--scanners` deliberately. With `--format cyclonedx`, Trivy disables security scanning by default, and its runner bypasses vulnerability-DB initialization without the vulnerability scanner. Confirm this behavior for the installed version; do not enable `vuln` merely to obtain a package list. [SBOM generation](https://trivy.dev/docs/latest/guide/supply-chain/sbom/), [option handling](https://github.com/aquasecurity/trivy/blob/main/pkg/flag/options.go), [DB initialization](https://github.com/aquasecurity/trivy/blob/main/pkg/commands/artifact/run.go).
+
+```sh
+if trivy filesystem --config "$audit_work/trivy.yaml" \
+  --ignorefile='' --secret-config='' \
+  --module-dir "$audit_work/empty-trivy-modules" --cache-dir "$audit_trivy_cache" \
+  --skip-db-update --skip-java-db-update --skip-check-update \
+  --skip-version-check --disable-telemetry --offline-scan --include-dev-deps \
+  --format cyclonedx --timeout 5m --output "$audit_work/inventory-filesystem.cdx.json" \
+  "$audit_target" > "$audit_work/inventory-filesystem.log" 2>&1
+then audit_exit=0; else audit_exit=$?; fi
+printf '%s\n' "$audit_exit" > "$audit_work/inventory-filesystem.exit"
+```
+
+For an already available release image archive, select the artifact itself; this does not pull, build, execute, or deploy it. Record its digest and the platform selected from any multi-platform archive; use the installed version's documented platform selector if needed.
+
+```sh
+audit_image_archive='/absolute/path/to/assessed-release-image.tar'
+if trivy image --input "$audit_image_archive" --config "$audit_work/trivy.yaml" \
+  --ignorefile='' --secret-config='' \
+  --module-dir "$audit_work/empty-trivy-modules" --cache-dir "$audit_trivy_cache" \
+  --skip-db-update --skip-java-db-update --skip-check-update \
+  --skip-version-check --disable-telemetry --offline-scan \
+  --format cyclonedx --timeout 5m --output "$audit_work/inventory-image.cdx.json" \
+  > "$audit_work/inventory-image.log" 2>&1
+then audit_exit=0; else audit_exit=$?; fi
+printf '%s\n' "$audit_exit" > "$audit_work/inventory-image.exit"
+```
+
+Validate generated output as above and reconcile it with the expected file/workspace/artifact inventory. Inspect diagnostics even on exit `0`; retain partial evidence on failure. Package/edge support depends on the ecosystem, input format and target type. For example, Node lockfiles can support dependency relationships while installed `package.json` detection does not provide the same graph. Development/optional/peer/workspace coverage must be checked, not inferred from a flag. Java archive identification can require a separate Java index DB; Maven metadata can require resolution. Updates remain disabled here: missing identification data, unavailable offline resolution, unsupported formats or omitted packages remain gaps. Never run dependency installation to conceal them. [Language coverage](https://trivy.dev/docs/latest/guide/coverage/language/), [Node coverage](https://trivy.dev/docs/latest/guide/coverage/language/nodejs/), [Java coverage](https://trivy.dev/docs/latest/guide/coverage/language/java/).
+
+Build edges only from relations actually supplied: CycloneDX `dependencies[].ref` → `dependsOn[]`, or the corresponding typed SPDX relationship with its documented direction. Preserve containment, build/dev/runtime distinctions and missing references; do not turn a flat package list into application-to-every-package dependency edges. Missing edges mean unknown relationships, not dependency-free components. `--dependency-tree` is a view of vulnerable-package origins, not a replacement for the inventory procedure. [CycloneDX relationships](https://cyclonedx.org/use-cases/software-dependencies/), [SPDX 2.3 relationships](https://spdx.github.io/spdx-spec/v2.3.1/relationships-between-SPDX-elements/), [Trivy output flags](https://trivy.dev/docs/latest/guide/references/configuration/cli/trivy_filesystem/).
+
+For reproducibility, record the raw SBOM hash, input hashes/revision/artifact digest, platform, tool/version, configuration/analyzers, exclusions, invocation and any identification-cache version. When comparing repeated inventories, separately hash a documented normalized comparison copy: sort stable component/typed-edge records; preserve ecosystem, name, version, purl qualifiers, scope, locations and artifact identity. Remove known volatile generation timestamps/document UUIDs from that comparison, remapping generated reference IDs consistently. Preserve duplicate identities and report ambiguity instead of merging different instances. Never modify the original SBOM or claim identical raw output when only normalized content matches.
+
+Keep raw JSON and logs private. The report needs the inventory source/identity, basis, counts, graph subset, coverage limits and `E-###` links—not a pasted package dump. Inventory-derived nodes remain `metadata-only` until source tracing or runtime evidence justifies more; findings require separate assessment. A completed inventory does not imply a vulnerability scan or absence of vulnerabilities. Record advisory database applicability as `not used — inventory only` for these runs.
+
+Optional tools are **not bundled or required**. Use one only if already available, within the existing scope, and useful for a specific missing relationship:
+
+| Optional evidence/tool | When useful | Effects and trust limits |
+| --- | --- | --- |
+| Native package-manager graph, e.g. [npm ls](https://docs.npmjs.com/cli/v11/commands/npm-ls/) | Explain workspace/peer/resolved or installed relationships | Distinguish lockfile-only from installed-tree output; review effective config, lifecycle/plugin/network behavior and workspace scope before any command. Do not assume every ecosystem's graph task is read-only. |
+| [Syft](https://github.com/anchore/syft) | Alternate local artifact/filesystem catalog when Trivy coverage is insufficient | Review source selection, catalogers, configuration, updates/network behavior and relationship coverage; no registry pull or installation by default. |
+| [dependency-cruiser](https://github.com/sverweij/dependency-cruiser/blob/main/doc/cli.md) | JavaScript/TypeScript source import graph | Imports are not a package SBOM or proof of runtime reachability. Repository JS configs/resolvers/plugins can execute code; use reviewed external configuration or supported no-config mode, without downloads/builds. |
+
+### Vulnerability and IaC scans
 
 Filesystem dependencies, using cached data and no dependency-identification API requests:
 

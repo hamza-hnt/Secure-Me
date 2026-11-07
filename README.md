@@ -125,13 +125,23 @@ The report includes a **per-job risk and evidence table** and represents the pip
 | --- | --- | --- |
 | Gitleaks | Current-file and selected Git-history secret detection | Redacted results, auditor-controlled configuration, explicit history and exclusion limits. |
 | Semgrep CE | Source rules using reviewed local rule files | Target/inline suppressions reviewed; parsing errors, unsupported paths, and timeouts remain visible. |
-| Trivy | Filesystem/image vulnerabilities and IaC misconfigurations | Explicit scanners and cache freshness; declared/installed/artifact inventories distinguished. |
+| Existing SBOM, then Trivy | Reuse or generate a dependency inventory; separately inspect filesystem/image vulnerabilities and IaC misconfigurations | Bind inventory to the target; distinguish declared/resolved/installed/artifact evidence and advisory freshness. |
 | ZAP passive plan | Scoped crawling and passive analysis through the Automation Framework | Contacts the application and can cause effects; requires its own established live-test scope. |
 | ZAP active plan | Selected active tests against an agreed environment | Separate from passive analysis and source review; bounded attack scope and stop conditions. |
 
 These are executable **procedures for the agent**, not a bundled scanner service or npm runner. The agent uses available trusted tools within the chosen scope; manual-only/offline choices are respected. Missing tools, rules, caches, access, or compatible flags are recorded with a useful manual/evidence fallback. No result is invented and no proposed command is counted as a completed scan.
 
 Scanner logs/JSON are private working evidence. The report includes only minimal redacted findings and records actual versions, rules/advisory dates, targets, suppressions, exits, errors, and coverage. Tool output is contextualized against code, configuration, and impact before it becomes a confirmed finding.
+
+## Dependency inventory without extra tooling requirements
+
+The [inventory procedure](preprod-security-audit/references/tooling.md#dependency-inventory-and-sboms) uses an existing **SBOM** (Software Bill of Materials) first, after checking its format, origin, coverage, and match to the reviewed revision or release artifact. If a usable inventory is missing, it uses available trusted Trivy to generate CycloneDX JSON. Inventory generation is separate from vulnerability scanning and does not require a successful advisory-database lookup.
+
+Native package-manager graphs can supplement missing package relationships. **Syft** is an optional alternative cataloger; **dependency-cruiser** is optional for JS/TS source-import relationships. The skill does not require all of them, install them automatically, or add a new audit module.
+
+Reproducibility means fixing the input snapshot, tool version, configuration, and relevant platform, then comparing normalized component/relationship data. Timestamps and generated identifiers can vary. A lockfile, installed tree, and release image represent different inventories; unresolved edges stay unknown.
+
+The full JSON remains private evidence. The report summarizes relevant components and supported relationships, with provenance and inspection depth. A package discovered by a tool is `metadata-only` until further checks support a deeper assessment.
 
 ## Report output
 

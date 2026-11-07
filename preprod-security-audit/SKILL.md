@@ -20,6 +20,8 @@ Always use [audit method](references/audit-method.md) and [findings and prioriti
 
 Use [the 35-domain coverage map](references/coverage-map.md) to relate the original assessment areas to control IDs. When tool-assisted checks are in scope, follow [scanner execution procedures](references/tooling.md) for Gitleaks, Semgrep CE, Trivy, and ZAP; select tools by evidence and availability, and record actual runs, errors, and omissions. A manual-only request does not activate scanners.
 
+For dependency inventories, reuse a target-matched SBOM first, then use Trivy if generation is needed and permitted. Native package graphs, Syft, and source-import analysis are optional supplements; follow the inventory procedure in the same reference. Keep package relationships separate from code imports and runtime relationships.
+
 | Surface | Module | Routing guidance |
 | --- | --- | --- |
 | Every assessment | [Architecture](references/modules/architecture.md) | Establish assets, trust boundaries, critical actions, exposure, and responsibility. |
