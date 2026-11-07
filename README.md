@@ -1,3 +1,5 @@
+![Baroque gilded shield, lock and key representing software security](https://raw.githubusercontent.com/hamza-hnt/Secure-Me/main/docs/assets/security-baroque.png)
+
 # Secure-Me
 
 **Evidence-based security reviews before production, delivered as an actionable Markdown report.**

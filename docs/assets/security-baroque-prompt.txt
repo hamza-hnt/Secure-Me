@@ -1,0 +1,16 @@
+Method: Built-in image_gen tool (image_gen__imagegen), new image generation.
+Date: 2026-11-07
+Parameters: transparent_background=false; no reference images.
+No post-generation image transformation. Copied original PNG into repository.
+
+Exact final prompt:
+Use case: stylized-concept
+Asset type: wide cinematic repository README hero banner, approximately 3:1 aspect ratio.
+Primary request: an elegant baroque oil painting about software security and careful protection, with no text.
+Scene/backdrop: a dark, richly layered painterly background with restrained ornamental gilding, deep shadows, and subtle warm illumination.
+Subject: an ornate gilded shield with a beautifully crafted lock and antique key motifs, rendered as a serious allegory of security. Fine circuit-like traces and a few delicate connected-node lines are woven discreetly into the engraving and surrounding ornament, suggesting software dependencies without becoming a diagram.
+Style/medium: luxurious seventeenth-century baroque oil painting, strong chiaroscuro, rich brushwork and tactile patina, meticulous gold-leaf ornament and refined depth; museum-quality painted illustration.
+Composition/framing: broad panoramic 3:1 canvas; a clear central focal shield, balanced expansive ornament across the width, controlled detail, generous breathing room near the outer edges, visually readable at README banner size.
+Lighting/mood: dramatic warm side light against deep umber shadows; solemn, confident and elegant.
+Materials/textures: aged gilded metal, sculpted acanthus flourishes, deep oil-paint glazes and visible painterly texture.
+Constraints: fully opaque image; no text, no lettering, no numbers, no logos, no watermark. No people, hacker clichés, neon lights, glowing code, terminal screens, flat vector styling or plastic 3D rendering.
