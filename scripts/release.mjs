@@ -7,6 +7,9 @@ import { fileURLToPath } from 'node:url';
 
 const registry = 'https://registry.npmjs.org';
 const archivePath = '.artifacts/package.tgz';
+const desktopName = 'secure-me-claude-desktop.zip';
+const desktopPath = `.artifacts/${desktopName}`;
+const checksumsPath = '.artifacts/SHA256SUMS';
 const recordPath = '.artifacts/release.json';
 const commitPattern = /^[a-f0-9]{40}$/;
 
@@ -56,7 +59,7 @@ export function validateRelease({ manifest, event, repository, eventSha, head, t
   }
   assert.notEqual(manifest.publishConfig?.provenance, false, 'Package configuration must not disable release provenance.');
   return {
-    schema: 1,
+    schema: 2,
     name: manifest.name,
     version: manifest.version,
     repository: repository.toLowerCase(),
@@ -88,13 +91,23 @@ async function releaseContext() {
   return validateRelease({ manifest, event, repository: process.env.GITHUB_REPOSITORY, eventSha: process.env.GITHUB_SHA, head, tagCommit, onMain });
 }
 
-export function archiveRecord(context, archive) {
+export function archiveRecord(context, archive, desktopArchive) {
   assert.ok(archive.length > 0, 'The tested archive is empty.');
-  return { ...context, sha256: createHash('sha256').update(archive).digest('hex') };
+  assert.ok(desktopArchive?.length > 0, 'The tested Claude Desktop archive is empty.');
+  return {
+    ...context,
+    sha256: createHash('sha256').update(archive).digest('hex'),
+    desktopSha256: createHash('sha256').update(desktopArchive).digest('hex'),
+  };
 }
 
-export function verifyArchive(context, record, archive) {
-  assert.deepEqual(record, archiveRecord(context, archive), 'Release archive identity or content changed after testing.');
+export function desktopChecksums(record) {
+  assert.match(record.desktopSha256, /^[a-f0-9]{64}$/, 'Expected the tested Claude Desktop SHA-256.');
+  return `${record.desktopSha256}  ${desktopName}\n`;
+}
+
+export function verifyArchive(context, record, archive, desktopArchive) {
+  assert.deepEqual(record, archiveRecord(context, archive, desktopArchive), 'Release archive identity or content changed after testing.');
 }
 
 export function verifyPublishRuntime(nodeVersion, npmVersion) {
@@ -113,23 +126,29 @@ export async function assertUnpublished(context, fetchImpl = fetch) {
 }
 
 async function main(command) {
-  assert.ok(['check', 'record', 'verify'].includes(command), 'Usage: node scripts/release.mjs check|record|verify');
+  assert.ok(['check', 'record', 'verify', 'verify-artifacts'].includes(command), 'Usage: node scripts/release.mjs check|record|verify|verify-artifacts');
   const context = await releaseContext();
   if (command === 'check') {
     assert.ok(process.env.GITHUB_OUTPUT, 'GITHUB_OUTPUT is required.');
     await appendFile(process.env.GITHUB_OUTPUT, `commit=${context.commit}\ndist-tag=${context.distTag}\n`);
   } else {
     const archive = await readFile(archivePath);
+    const desktopArchive = await readFile(desktopPath);
     if (command === 'record') {
-      await writeFile(recordPath, `${JSON.stringify(archiveRecord(context, archive), null, 2)}\n`, { flag: 'wx' });
+      const record = archiveRecord(context, archive, desktopArchive);
+      await writeFile(recordPath, `${JSON.stringify(record, null, 2)}\n`, { flag: 'wx' });
+      await writeFile(checksumsPath, desktopChecksums(record), { flag: 'wx' });
     } else {
       const record = JSON.parse(await readFile(recordPath, 'utf8'));
-      verifyArchive(context, record, archive);
-      const npmVersion = execFileSync('npm', ['--version'], { encoding: 'utf8' }).trim();
-      verifyPublishRuntime(process.versions.node, npmVersion);
-      assert.ok(process.env.ACTIONS_ID_TOKEN_REQUEST_URL && process.env.ACTIONS_ID_TOKEN_REQUEST_TOKEN, 'GitHub OIDC permission is required.');
-      assert.ok(!process.env.NODE_AUTH_TOKEN && !process.env.NPM_TOKEN, 'Publishing must use OIDC, not a stored npm token.');
-      await assertUnpublished(context);
+      verifyArchive(context, record, archive, desktopArchive);
+      assert.equal(await readFile(checksumsPath, 'utf8'), desktopChecksums(record), 'Desktop checksum file changed after testing.');
+      if (command === 'verify') {
+        const npmVersion = execFileSync('npm', ['--version'], { encoding: 'utf8' }).trim();
+        verifyPublishRuntime(process.versions.node, npmVersion);
+        assert.ok(process.env.ACTIONS_ID_TOKEN_REQUEST_URL && process.env.ACTIONS_ID_TOKEN_REQUEST_TOKEN, 'GitHub OIDC permission is required.');
+        assert.ok(!process.env.NODE_AUTH_TOKEN && !process.env.NPM_TOKEN, 'Publishing must use OIDC, not a stored npm token.');
+        await assertUnpublished(context);
+      }
     }
   }
   console.log(`Release ${context.tag}: ${command} passed (${context.commit}, npm tag ${context.distTag}).`);

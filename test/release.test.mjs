@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { archiveRecord, assertUnpublished, parseVersion, validateRelease, verifyArchive, verifyPublishRuntime } from '../scripts/release.mjs';
+import { archiveRecord, assertUnpublished, desktopChecksums, parseVersion, validateRelease, verifyArchive, verifyPublishRuntime } from '../scripts/release.mjs';
 
 const sha = 'a'.repeat(40);
 function input(version = '1.2.3') {
@@ -53,13 +53,19 @@ test('canonical SemVer protects release refs and handles prerelease rules', () =
 test('artifact verification binds bytes, package, source, version and dist-tag', () => {
   const context = validateRelease(input());
   const bytes = Buffer.from('the exact tested archive');
-  const record = archiveRecord(context, bytes);
-  verifyArchive(context, record, bytes);
-  assert.throws(() => verifyArchive(context, record, Buffer.from('different archive')));
+  const desktop = Buffer.from('the exact tested Desktop ZIP');
+  const record = archiveRecord(context, bytes, desktop);
+  verifyArchive(context, record, bytes, desktop);
+  assert.throws(() => verifyArchive(context, record, Buffer.from('different archive'), desktop));
+  assert.throws(() => verifyArchive(context, record, bytes, Buffer.from('different ZIP')));
   for (const [key, value] of [['commit', 'b'.repeat(40)], ['version', '9.0.0'], ['name', 'other-package'], ['distTag', 'next']]) {
-    assert.throws(() => verifyArchive(context, { ...record, [key]: value }, bytes));
+    assert.throws(() => verifyArchive(context, { ...record, [key]: value }, bytes, desktop));
   }
-  assert.throws(() => archiveRecord(context, Buffer.alloc(0)));
+  assert.throws(() => archiveRecord(context, Buffer.alloc(0), desktop));
+  assert.throws(() => archiveRecord(context, bytes, Buffer.alloc(0)));
+  assert.throws(() => archiveRecord(context, bytes));
+  assert.equal(desktopChecksums(record), `${record.desktopSha256}  secure-me-claude-desktop.zip\n`);
+  assert.throws(() => desktopChecksums({ desktopSha256: 'invalid' }));
 });
 
 test('OIDC runtime minimums fail closed', () => {

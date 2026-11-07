@@ -1,6 +1,6 @@
 {
   "name": "secure-me-skill",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Install the Secure-Me preproduction security audit skill with evidence graphs and actionable remediation plans.",
   "license": "UNLICENSED",
   "author": "hamza-hnt",
@@ -35,7 +35,7 @@
     "preprod-security-audit/"
   ],
   "scripts": {
-    "test": "node --test test/installer.test.cjs test/desktop-archive.test.cjs test/release.test.mjs",
+    "test": "node --test test/installer.test.cjs test/desktop-archive.test.cjs test/release.test.mjs test/attach-release.test.mjs",
     "validate": "node scripts/validate.mjs",
     "test:package": "node scripts/test-package.mjs"
   },

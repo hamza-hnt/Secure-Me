@@ -3,3 +3,4 @@
 /node_modules/
 /.artifacts/
 *.tgz
+/secure-me-claude-desktop.zip
