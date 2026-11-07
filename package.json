@@ -15,6 +15,8 @@
   "keywords": [
     "agent-skills",
     "codex",
+    "claude-code",
+    "claude-desktop",
     "security",
     "audit",
     "owasp",
@@ -33,7 +35,7 @@
     "preprod-security-audit/"
   ],
   "scripts": {
-    "test": "node --test test/installer.test.cjs test/release.test.mjs",
+    "test": "node --test test/installer.test.cjs test/desktop-archive.test.cjs test/release.test.mjs",
     "validate": "node scripts/validate.mjs",
     "test:package": "node scripts/test-package.mjs"
   },

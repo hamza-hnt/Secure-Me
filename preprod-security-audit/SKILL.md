@@ -1,11 +1,13 @@
 ---
 name: preprod-security-audit
-description: Assess an application's security readiness before production or a major release. Calibrate the review through adaptive questions, examine applicable code, identity, data, deployment, delivery, and operational controls, and produce an evidence-based Markdown report with remediation and analysis and dependency graphs. Use for requested security audits and release-readiness reviews, rather than automatically auditing ordinary feature work.
+description: Assess application security before production or releases. Use for requested security audits and release-readiness reviews; deliver a Markdown report with evidence, graphs, and a remediation plan.
 ---
 
 # Preproduction Security Audit
 
 Produce a decision-useful security assessment of the specified release. Explain what was examined, what the evidence supports, what remains unknown, and how to remediate and verify each issue. Default to English for the report unless the user requests another language.
+
+Use only the current host's available, authorized capabilities. Resolve bundled references relative to this skill folder. Local file access, shell/scanners, browsing, connectors, and delegation are not assumed. When a capability is unavailable, review supplied evidence and record `U-###` gaps. If the requested filesystem destination cannot be written, provide the report as a downloadable artifact or Markdown text and state that delivery limitation.
 
 ## Calibrate before selecting checks
 

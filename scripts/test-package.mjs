@@ -90,7 +90,13 @@ try {
   const destination = join(temp, 'CLI target with spaces');
   npm(['exec', '--offline', '--', 'secureme', 'install', '--dest', destination], { cwd: consumer });
   assert.equal(await readFile(join(destination, 'preprod-security-audit', 'SKILL.md'), 'utf8'), await readFile(join(root, 'preprod-security-audit', 'SKILL.md'), 'utf8'));
-  const suiteOutput = run(process.execPath, ['--test', join(root, 'test', 'installer.test.cjs')], {
+  // Verify the new host through npm's real executable, not just direct module calls.
+  npm(['exec', '--offline', '--', 'secureme', 'install', '--agent', 'claude-code', '--project'], { cwd: consumer });
+  const claudeTree = await snapshotTree(join(consumer, '.claude', 'skills', 'preprod-security-audit'));
+  assert.deepEqual(claudeTree, sourceTree, 'Claude Code must receive the complete shared skill.');
+  const desktopZip = join(temp, 'secure-me-claude-desktop.zip');
+  npm(['exec', '--offline', '--', 'secureme', 'export', '--output', desktopZip], { cwd: consumer });
+  const suiteOutput = run(process.execPath, ['--test', join(root, 'test', 'installer.test.cjs'), join(root, 'test', 'desktop-archive.test.cjs')], {
     cwd: consumer, env: { ...env, SECUREME_PACKAGE_ROOT: installedRoot },
   });
   process.stdout.write(suiteOutput);
@@ -98,6 +104,7 @@ try {
   // Only a fully tested archive is made available to the release workflow.
   await mkdir(join(root, '.artifacts'), { recursive: true });
   await copyFile(archive, join(root, '.artifacts', 'package.tgz'));
+  await copyFile(desktopZip, join(root, '.artifacts', 'secure-me-claude-desktop.zip'));
   console.log(`Tested ${manifest.name}@${manifest.version}: ${packed.files.length} packed files, ${packed.size} bytes. Archive: .artifacts/package.tgz`);
 } finally {
   await rm(temp, { recursive: true, force: true });

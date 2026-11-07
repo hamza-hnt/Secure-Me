@@ -20,7 +20,7 @@ async function workspace(t) {
   const cwd = path.join(root, 'project with spaces');
   await fs.mkdir(home);
   await fs.mkdir(cwd);
-  const env = { ...process.env, HOME: home, USERPROFILE: home, CODEX_HOME: path.join(root, 'legacy codex') };
+  const env = { ...process.env, HOME: home, USERPROFILE: home, CODEX_HOME: path.join(root, 'legacy codex'), CLAUDE_CONFIG_DIR: '' };
   return { root, home, cwd, env };
 }
 
@@ -56,11 +56,13 @@ async function tree(root, relative = '') {
 
 test('help/default help/version have no installation side effects', async (t) => {
   const context = await workspace(t);
-  for (const args of [[], ['help'], ['--help'], ['-h'], ['install', '--help']]) {
+  for (const args of [[], ['help'], ['--help'], ['-h'], ['install', '--help'], ['export', '--help']]) {
     const result = cli(args, context);
     assert.equal(result.status, 0, result.stderr);
     assert.match(result.stdout, /Usage: secureme/);
     assert.match(result.stdout, /\.agents\/skills/);
+    assert.match(result.stdout, /claude-code/);
+    assert.match(result.stdout, /export/);
   }
   const { version } = JSON.parse(await fs.readFile(path.join(PACKAGE_ROOT, 'package.json'), 'utf8'));
   for (const flag of ['--version', '-v']) {
@@ -79,6 +81,11 @@ test('invalid commands and flags fail without writing', async (t) => {
     ['install', '--dest'], ['install', '--dest='], ['install', '--dest', '--force'],
     ['install', '--unknown'], ['install', 'unexpected'], ['install', '--force', '--force'],
     ['install', '--dest', 'a', '--dest', 'b'], ['install', '--project', '--dest', 'a'],
+    ['install', '--agent'], ['install', '--agent='], ['install', '--agent', 'claude-desktop'],
+    ['install', '--agent', 'codex', '--agent=claude-code'], ['install', '--output', 'skill.zip'],
+    ['export', '--agent', 'claude-code'], ['export', '--force'], ['export', '--dest', 'a'],
+    ['export', '--project'], ['export', '--output'], ['export', '--output='],
+    ['export', '--output', 'a.zip', '--output=b.zip'], ['export', '--dry-run', '--dry-run'],
   ]) {
     const result = cli(args, context);
     assert.equal(result.status, 1, JSON.stringify(args));
@@ -98,7 +105,131 @@ test('default install respects HOME, ignores CODEX_HOME and copies the full ship
     assert.ok(await exists(path.join(target, relative)), `Missing packaged skill resource: ${relative}`);
   }
   assert.equal(await exists(context.env.CODEX_HOME), false);
+  const explicit = cli(['install', '--agent=codex'], context);
+  assert.equal(explicit.status, 0, explicit.stderr);
+  assert.match(explicit.stdout, /Already up to date/);
   assert.deepEqual(await fs.readdir(context.cwd), []);
+});
+
+test('Claude Code personal and project installs use their own destinations and preserve the full tree', async (t) => {
+  const context = await workspace(t);
+  let result = cli(['install', '--agent', 'claude-code', '--dry-run'], context);
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /Dry run: Install/);
+  assert.deepEqual(await fs.readdir(context.home), []);
+  result = cli(['install', '--agent', 'claude-code'], context);
+  assert.equal(result.status, 0, result.stderr);
+  const personal = path.join(context.home, '.claude', 'skills', SKILL_NAME);
+  assert.deepEqual(await tree(personal), await tree(SOURCE));
+  result = cli(['install', '--agent=claude-code', '--project'], context);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(await tree(path.join(context.cwd, '.claude', 'skills', SKILL_NAME)), await tree(SOURCE));
+  assert.equal(await exists(path.join(context.home, '.agents')), false);
+  assert.equal(await exists(path.join(context.cwd, '.agents')), false);
+  await fs.writeFile(path.join(personal, 'user-notes.md'), 'preserve personal notes');
+  const previous = await tree(personal);
+  result = cli(['install', '--agent', 'claude-code'], context);
+  assert.equal(result.status, 1);
+  assert.deepEqual(await tree(personal), previous);
+  result = cli(['install', '--agent', 'claude-code', '--force'], context);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(await tree(personal), await tree(SOURCE));
+  const config = path.join(context.home, '.claude');
+  const backups = (await fs.readdir(config)).filter((name) => name.startsWith('.secureme-backup-'));
+  assert.equal(backups.length, 1);
+  assert.deepEqual(await tree(path.join(config, backups[0], SKILL_NAME)), previous);
+  assert.deepEqual(await fs.readdir(path.dirname(personal)), [SKILL_NAME]);
+});
+
+test('Claude config override affects personal installs only; custom and project paths take precedence', async (t) => {
+  const context = await workspace(t);
+  const config = path.join(context.root, 'Claude alternate config');
+  context.env.CLAUDE_CONFIG_DIR = config;
+  let result = cli(['install', '--agent', 'claude-code'], context);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(await tree(path.join(config, 'skills', SKILL_NAME)), await tree(SOURCE));
+  result = cli(['install', '--agent', 'claude-code', '--project'], context);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(await tree(path.join(context.cwd, '.claude', 'skills', SKILL_NAME)), await tree(SOURCE));
+  result = cli(['install', '--agent', 'claude-code', '--dest', 'custom skills with spaces'], context);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(await tree(path.join(context.cwd, 'custom skills with spaces', SKILL_NAME)), await tree(SOURCE));
+  assert.deepEqual(await fs.readdir(context.home), []);
+  context.env.CLAUDE_CONFIG_DIR = 'relative config';
+  result = cli(['install', '--agent', 'claude-code'], context);
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /CLAUDE_CONFIG_DIR must be an absolute path/);
+  assert.equal(await exists(path.join(context.cwd, 'relative config')), false);
+  for (const flags of [['--project'], ['--dest', 'custom skills with spaces']]) {
+    result = cli(['install', '--agent', 'claude-code', ...flags], context);
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /Already up to date/);
+  }
+  result = cli(['install'], context);
+  assert.equal(result.status, 0, result.stderr);
+  assert.ok(await exists(path.join(context.home, '.agents', 'skills', SKILL_NAME, 'SKILL.md')));
+});
+
+test('Claude personal home resolution uses USERPROFILE on Windows; explicit tilde paths remain consistent', () => {
+  const home = path.resolve('HOME directory');
+  const profile = path.resolve('Windows profile');
+  const cwd = path.resolve('project with spaces');
+  const env = { HOME: home, USERPROFILE: profile, CLAUDE_CONFIG_DIR: '' };
+  const options = { agent: 'claude-code' };
+  assert.equal(resolveSkillsParent(options, { cwd, env, platform: 'win32' }), path.join(profile, '.claude', 'skills'));
+  assert.equal(resolveSkillsParent(options, { cwd, env, platform: 'darwin' }), path.join(home, '.claude', 'skills'));
+  assert.equal(resolveSkillsParent(options, { cwd, env, platform: 'linux' }), path.join(home, '.claude', 'skills'));
+  assert.equal(resolveSkillsParent(options, { cwd, env: {}, home }), path.join(home, '.claude', 'skills'));
+  assert.equal(resolveSkillsParent({ ...options, dest: '~/custom' }, { cwd, env, platform: 'win32' }), path.join(home, 'custom'));
+  assert.equal(resolveSkillsParent({}, { cwd, env, platform: 'win32' }), path.join(home, '.agents', 'skills'));
+});
+
+test('desktop export creates the default ZIP and leaves identical content and timestamps unchanged', async (t) => {
+  const context = await workspace(t);
+  let result = cli(['export'], context);
+  assert.equal(result.status, 0, result.stderr);
+  const target = path.join(context.cwd, 'secure-me-claude-desktop.zip');
+  assert.ok(result.stdout.includes(target));
+  const original = await fs.readFile(target);
+  assert.equal(original.readUInt32LE(0), 0x04034b50, 'Expected a ZIP local-file header');
+  const past = new Date('2001-01-01T00:00:00Z');
+  await fs.utimes(target, past, past);
+  const before = (await fs.stat(target)).mtimeMs;
+  result = cli(['export'], context);
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /Already up to date/);
+  assert.equal((await fs.stat(target)).mtimeMs, before);
+  assert.deepEqual(await fs.readFile(target), original);
+  assert.deepEqual(await fs.readdir(context.cwd), [path.basename(target)]);
+  assert.deepEqual(await fs.readdir(context.home), []);
+});
+
+test('desktop export resolves explicit relative and tilde paths; dry-run writes nothing', async (t) => {
+  const context = await workspace(t);
+  const output = 'output folder with spaces/custom skill.zip';
+  let result = cli(['export', '--output', output, '--dry-run'], context);
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /Dry run: Export/);
+  assert.deepEqual(await fs.readdir(context.cwd), []);
+  result = cli(['export', '--output', output], context);
+  assert.equal(result.status, 0, result.stderr);
+  const exported = await fs.readFile(path.join(context.cwd, output));
+  result = cli(['export', '--output=~/my skill.zip'], context);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(await fs.readFile(path.join(context.home, 'my skill.zip')), exported);
+  assert.equal(await exists(path.join(context.cwd, 'secure-me-claude-desktop.zip')), false);
+});
+
+test('desktop export refuses different existing output, including dry-run, with no force option', async (t) => {
+  const context = await workspace(t);
+  const target = path.join(context.cwd, 'personal.zip');
+  await fs.writeFile(target, 'user-owned content');
+  for (const flags of [[], ['--dry-run'], ['--force']]) {
+    const result = cli(['export', '--output', target, ...flags], context);
+    assert.equal(result.status, 1);
+    assert.equal(await fs.readFile(target, 'utf8'), 'user-owned content');
+  }
+  assert.deepEqual(await fs.readdir(context.cwd), ['personal.zip']);
 });
 
 test('HOME fallback, USERPROFILE, explicit tilde and relative custom directories resolve predictably', () => {
