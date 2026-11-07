@@ -181,6 +181,16 @@ flowchart LR
 
 If no dependencies are identifiable, replace the example with the assessed target and an inventory-gap node, or an evidence-backed explanation of absence. Do not invent nodes to fill this section.
 
+### Focused dependency advisory review
+
+**Lookup coverage and freshness:** {{selected components and rationale; queried/unqueried inventory; sources and retrieval/cache dates; failed, partial, unsupported or offline checks}}. If no lookup was performed, replace the table with the reason and follow-up; do not invent a negative result.
+
+| Component / ecosystem / source / resolved version / role | Advisory IDs / aliases and affected-range match | Published severity / dated exploitation evidence | Local reachability / impact | Verified fix or mitigation | Primary sources / lookup date / records |
+| --- | --- | --- | --- | --- | --- |
+| {{exact identity; runtime/build role; dependency path}} | {{CVE/GHSA/OSV or other advisory; matched, unresolved or rejected with reason}} | {{source severity; KEV/vendor known exploitation, public PoC, unknown or checked-not-listed; keep signals separate}} | {{feature/configuration/artifact conditions; confirmed, conditional or unknown}} | {{verified branch-specific fixed version or mitigation; unknown if unverified}} | {{direct links; retrieval/cache date; E/F/U IDs}} |
+
+Deduplicate aliases and link material matches to detailed findings and the correction plan. For compromised distributions, include channel, digest and exposure window where relevant. A successful bounded search may support “no matching advisory found in these sources as of this date”; absent or stale lookup evidence cannot support a current clean result.
+
 ## 7. Detailed findings
 
 Repeat the following record for each actual finding; remove it and state the scoped result if there are none.

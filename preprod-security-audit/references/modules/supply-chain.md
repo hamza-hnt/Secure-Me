@@ -18,6 +18,32 @@ Distinguish these inventories:
 | Runtime/artifact evidence | Components or artifact observed at a target | Reachability of every vulnerable function or environment |
 | Source-level call trace | A plausible or demonstrated execution path | Runtime conditions not examined |
 
+## Lightweight current advisory triage
+
+Use SC-003 for a focused current-advisory check after establishing the dependency inventory; a prior scanner alert is not required. Preserve offline/manual/network restrictions. Query only permitted public package identity/version metadata: do not upload source, secrets, private package identifiers, or the complete SBOM to a third-party service as an incidental step. Do not execute proof-of-concept code, install/update dependencies, or mutate lockfiles during triage.
+
+1. **Select and disclose the subset.** Prioritize identity/cryptography, exposed request/file parsers, data-access components, privileged build/deploy tooling, and relevant transitive dependencies. Start with known-exploited issues and critical/high advisories; retain lower-severity issues when local authority, exposure, chaining, or business impact makes them material. Record selection rationale and the queried versus unqueried inventory; this is not an exhaustive vulnerability assessment.
+2. **Resolve identity before matching.** Record ecosystem, canonical package name, exact resolved version or commit, registry/vendor/distribution source, dependency path, and runtime/build role. Follow package aliases to their actual package identity. For compromised releases or mutable tags, match the advisory's distribution channel, artifact digest, and acquisition/execution window when relevant; the version string alone does not identify the delivered bytes. A declared range, similar name, different registry, or unrelated fork does not establish an affected installed component; keep unresolved identity/version explicit.
+3. **Use dated authoritative records.** Consult the maintainer/vendor advisory or security release notes, with OSV and GitHub Advisory Database records for ecosystem/package mapping and discovery. Query the exact identity/version and inspect the returned affected records; search-result snippets alone are insufficient. Follow pagination for the selected query or disclose partial results. Record queried source, retrieval date, advisory publication/modification dates, and reviewed/unreviewed status where provided.
+4. **Reconcile applicability.** Verify affected ranges and branch-specific fixed versions using the ecosystem's version semantics, including prereleases, epochs/revisions, distribution packages, and vendor backports where material. An older upstream version can contain a vendor fix; obtain vendor/package-build evidence rather than assuming either vulnerability or remediation. Check withdrawn/rejected records and conflicting ranges. Deduplicate verified CVE/GHSA/OSV aliases while preserving affected-package occurrences; an upstream/bundled advisory relationship is not automatically an alias.
+5. **Check exploitation evidence separately.** For a matched CVE, consult the current CISA KEV catalog or its official mirror and relevant vendor notices when permitted. Record catalog/source date and the actual match. A public PoC demonstrates availability of an example, not known exploitation in the wild or exploitability of this deployment. A missing KEV entry or missing PoC is not evidence of safety; an inaccessible catalog is `unknown`, not a negative match.
+6. **Trace local preconditions.** Connect the affected feature to inspected imports/callers, configuration, privileges, attacker-controlled input, and the target artifact when available. Keep presence, feature reachability, and demonstrated exploitation distinct. A development dependency may affect a privileged build. A missing observed call path leaves reachability unresolved unless adequate analysis supports non-applicability.
+7. **Verify the correction before recommending a version.** Cite the vendor/advisory's fixed release for the actual affected branch/package, or its documented mitigation and conditions. If no fix or mitigation is verified, say so; do not invent a next version or assume “latest” is compatible or fixes every issue. Record required compatibility/behavior checks and residual risk; implementation and post-change verification are separate work.
+
+Keep these prioritization signals separate in the result:
+
+| Signal | Record and interpretation |
+| --- | --- |
+| Component criticality | The component's actual role, authority, data access, exposure, and failure impact; this is not an advisory severity label. |
+| Advisory severity | Published severity and, when used, scoring source/version/vector; preserve differences between sources rather than manufacturing a score. |
+| Exploitation evidence | Dated KEV/vendor confirmation, sourced public-PoC availability, or unknown; do not conflate the categories. |
+| Local reachability | Confirmed affected use, conditional use, adequately evidenced non-applicability, or unknown, with configuration/artifact limits. |
+| Local priority | A justified P0–P3 and release consequence based on the preceding signals and the project's requirements, not the CVSS number alone. |
+
+Add a compact advisory-result table to the report with component/ecosystem/source/version, dependency role, advisory IDs/aliases, affected-range match, severity, exploitation evidence/date, reachability/preconditions, verified fixed version or mitigation, primary links/retrieval date, and `E-###`/`F-###`/`U-###`. Reuse existing finding rows for duplicate root causes. Record a bounded “no matching advisory found in the queried sources as of this date” result only after a successful applicable query; never equate it with a secure component.
+
+Disclose unqueried dependencies, unsupported ecosystems, unavailable/failed/rate-limited sources, incomplete pages, conflicting records, cached-data dates, and offline limitations. If network lookup is disallowed, use already available evidence with its age or record `not-verified` and a concrete follow-up; do not fabricate a current check. Recheck material advisories when the release version, artifact, or source data changes. Keep no evergreen list of specific CVEs in this skill.
+
 ## Static CI/CD review procedure
 
 A pipeline review starts with reading definitions and their called code. It does not authorize triggering, approving, retrying, rerunning, cancelling, or deploying a pipeline; installing its dependencies; generating dynamic configuration by executing project code; or changing CI settings. Preserve any explicit authorization already supplied. Read remote definitions, settings, and existing run evidence only when access and network use are in scope; otherwise record the missing boundary as `U-###`.
@@ -72,8 +98,8 @@ Keep declared job behavior separate from observed runs and effective service-sid
 - **Correction / retest:** Reconcile inconsistent manifests, lockfiles, and artifact inventories; regenerate inventory through a reviewed build when authorized and confirm the resulting release contents.
 
 ### SC-003 — Vulnerability context and reachability
-- **Applies:** Components with a matched advisory or suspicious vulnerable use.
-- **Check:** Match ecosystem, package identity, affected range, fix status, runtime/build location, configuration, and reachable behavior. Use vendor advisories and current vulnerability sources; record lookup date and unavailable sources.
+- **Applies:** Inventoried third-party components selected for current-advisory triage, matched advisories, or suspicious vulnerable use.
+- **Check:** Follow the lightweight advisory procedure above: match exact ecosystem/package/source/resolved version, reconcile affected ranges and fixes, check dated exploitation evidence, and trace local configuration/reachability. Prioritize critical components and known-exploited or critical/high issues without discarding contextual lower-severity risk; record the queried subset and unavailable sources.
 - **Evidence / limits:** An advisory or scanner hit supports a candidate, not automatic exploitability. A development dependency may still compromise CI; lack of a demonstrated call path is not proof of safety.
 - **Correction / retest:** Upgrade, replace, remove, or mitigate the affected component; confirm the fixed resolved/artifact version and relevant behavioral tests. Keep unresolved preconditions as `needs-validation` or `not-verified` as appropriate.
 
@@ -183,6 +209,10 @@ Use ecosystem/provider documentation and advisories matching the inspected compo
 
 - [NIST Secure Software Development Framework](https://csrc.nist.gov/Projects/ssdf): development and vulnerability-management practices.
 - [SLSA](https://slsa.dev/): source/build provenance and artifact integrity; select a version explicitly if mapping requirements.
+- [OSV query API](https://google.github.io/osv.dev/post-v1-query/) and [OSV schema](https://ossf.github.io/osv-schema/): package/version matching, pagination, affected records, aliases, and withdrawn advisories.
+- [GitHub Advisory Database](https://docs.github.com/en/code-security/concepts/vulnerability-reporting-and-management/github-advisory-database): ecosystem mapping, reviewed/unreviewed records, affected and patched versions, and links to original advisories.
+- [CISA KEV catalog](https://www.cisa.gov/known-exploited-vulnerabilities-catalog) and [official CISA mirror](https://github.com/cisagov/kev-data): dated known-exploitation evidence for prioritization, not proof of local exploitability or completeness.
+- [Red Hat backporting guidance](https://access.redhat.com/security/updates/backporting): an example of why distribution/vendor build advisories take precedence over a bare upstream-version comparison; use the actual vendor's records for the assessed package.
 - [GitHub Actions secure use reference](https://docs.github.com/en/actions/reference/security/secure-use): GitHub-specific workflow and execution boundaries when that platform is used.
 - [GitHub workflow syntax](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax), [triggering events](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows), and [OIDC reference](https://docs.github.com/en/actions/reference/security/oidc): job result handling, event context, and trust claims; match the effective repository/provider settings.
 - [GitLab includes](https://docs.gitlab.com/ci/yaml/includes/) and [merge-request pipelines](https://docs.gitlab.com/ci/pipelines/merge_request_pipelines/): composed configuration, override ordering, fork/parent execution context, and protected resources.

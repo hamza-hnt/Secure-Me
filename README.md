@@ -143,6 +143,16 @@ Reproducibility means fixing the input snapshot, tool version, configuration, an
 
 The full JSON remains private evidence. The report summarizes relevant components and supported relationships, with provenance and inspection depth. A package discovered by a tool is `metadata-only` until further checks support a deeper assessment.
 
+## Focused checks for known vulnerabilities
+
+After inventory, [SC-003](preprod-security-audit/references/modules/supply-chain.md#lightweight-current-advisory-triage) checks a disclosed subset of critical dependencies against current maintainer/vendor advisories, OSV and GitHub Advisory Database records. CISA KEV provides a separate known-exploitation signal. Identity/crypto, exposed parsers, data-access components, privileged build tools and their relevant transitive dependencies receive priority.
+
+The report records exact ecosystem/package/source/version matching, CVE/GHSA/OSV aliases, affected ranges, published severity, exploitation evidence, local reachability, and a verified fixed version or mitigation. Component criticality and remediation priority are assessed separately from the advisory's severity. Critical/high and known-exploited issues come first; lower-severity issues remain relevant when local impact warrants it.
+
+Every lookup has a source and retrieval/cache date. Queried and unqueried dependencies, stale/offline data, unsupported ecosystems and failed requests remain visible. A current search requires permitted network access; a manual-only review can still use supplied evidence. The skill neither uploads private inventories nor changes dependencies during this check, and it maintains no static list of CVEs that could become stale.
+
+Audit tools are part of the trust boundary too: provenance and applicable upstream advisories are checked before an unverified distribution is executed. A tool's name in this repository does not establish its installation, version or exposure to an advisory.
+
 ## Report output
 
 By default, a new report is written in the audited project:
@@ -162,7 +172,7 @@ The user can choose another destination. Existing reports are preserved. Reports
 3. Scope, repository choice, module selection, performed checks, scanner execution register, and per-job CI/CD risk inventory.
 4. Per-control coverage with evidence and limitations.
 5. Analysis path graph and node/edge registers.
-6. Analyzed dependency graph and component/package inventory.
+6. Analyzed dependency graph, inventory provenance, component/package inventory, and dated advisory-review results.
 7. Detailed findings with concrete corrections and acceptance tests.
 8. Unknowns, conflicting evidence, and next verification actions.
 9. Prioritized correction plan with owners, effort, prerequisites, milestones, and status.
