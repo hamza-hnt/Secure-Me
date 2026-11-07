@@ -1,6 +1,6 @@
 # Publishing secure-me-skill
 
-The package is published from [hamza-hnt/Secure-Me](https://github.com/hamza-hnt/Secure-Me) by [publish.yml](https://github.com/hamza-hnt/Secure-Me/blob/main/.github/workflows/publish.yml) when a GitHub release is **published**. The workflow uses npm OIDC trusted publishing and a tested archive. It does not use a stored npm token, repack in the publish job, or silently accept an already-published version.
+The package is published from [hamza-hnt/Secure-Me](https://github.com/hamza-hnt/Secure-Me) by [publish.yml](https://github.com/hamza-hnt/Secure-Me/blob/main/.github/workflows/publish.yml) when a GitHub release is **published**. The workflow uses npm OIDC trusted publishing and a tested archive. A separate job then attaches the tested Claude Desktop ZIP and checksum to the GitHub release. It does not use a stored npm token, repack in the publish job, or silently accept an already-published version.
 
 ## One-time setup
 
@@ -57,15 +57,15 @@ Do not create or rerun an automatic `v0.1.0` publication after manually publishi
 1. Update `package.json` and `package-lock.json` to the same new SemVer version. Keep the repository URL and public npm registry configuration intact.
 2. Run the local checks above and merge the release commit into `main` through the repository's normal review process.
 3. Create a tag exactly **`v<package.version>`** on that commit. A tag-only push does not publish npm; publish a GitHub release for the tag.
-4. Match the GitHub release's prerelease checkbox to the package version: `0.1.1` is stable; `0.2.0-rc.1` is a prerelease.
-5. Observe the release validation, all nine tests, any configured `npm` environment review, and the publication result. Confirm the npm version, channel, and provenance after success.
+4. Match the GitHub release's prerelease checkbox to the package version: `0.2.0` is stable; `0.3.0-rc.1` is a prerelease.
+5. Observe the release validation, all nine tests, any configured `npm` environment review, npm publication, and Desktop asset attachment. Confirm the npm version/channel/provenance and the release ZIP/checksum after success.
 
 The validated commit must be reachable from `origin/main`; it need not remain the branch tip. Checkout `HEAD`, the release event SHA, and the tag's resolved commit must be identical. A moved tag, unrelated branch commit, repository mismatch, or conflicting release channel/configuration fails verification.
 
 | Release type | Example tag | GitHub prerelease | npm dist-tag |
 | --- | --- | --- | --- |
-| Stable | `v0.1.1` | No | `latest` |
-| Prerelease | `v0.2.0-rc.1` | Yes | `next` |
+| Stable | `v0.2.0` | No | `latest` |
+| Prerelease | `v0.3.0-rc.1` | Yes | `next` |
 
 The workflow does not promote an existing prerelease by retagging it. Release a new version through the same checks.
 
@@ -88,15 +88,31 @@ npm run test:package
 npm run validate
 ```
 
-The package has no runtime or development dependencies. Its installer uses Node.js built-ins. The archive includes the CLI, skill tree, README, and package metadata; artwork, publishing docs, tests, and workflow sources are excluded. The package test enforces a 512 KiB compressed-size ceiling.
+The package has no runtime or development dependencies. Its installer and ZIP exporter use Node.js built-ins. The npm archive includes the CLI/exporter, skill tree, README, and package metadata; artwork, publishing docs, tests, and workflow sources are excluded. The package test enforces a 512 KiB compressed-size ceiling.
 
-The Linux/Node 24 job preserves `.artifacts/package.tgz` only after testing the packed installation. It records `.artifacts/release.json` with package identity, version, repository, exact commit/tag, intended npm channel, and the archive's SHA-256. Both files are uploaded as `npm-release-<run_id>` and retained for seven days.
+Each matrix job tests the packed installation, including Claude Code paths and Desktop ZIP export from the installed npm package. These tests verify packaging/installation invariants; successful execution inside Claude is a separate validation and must not be inferred from them.
+
+The Linux/Node 24 job preserves `.artifacts/package.tgz` and `.artifacts/secure-me-claude-desktop.zip` after the package checks. It records `.artifacts/release.json` (schema 2) with package identity, version, repository, exact commit/tag, intended npm channel, and separate SHA-256 digests for the npm archive and Desktop ZIP. `.artifacts/SHA256SUMS` contains the Desktop ZIP checksum. These four files are uploaded as `npm-release-<run_id>` and retained for seven days.
 
 Publication depends on the entire test matrix succeeding. The publish job downloads that run's artifact and recomputes its record before publication. It revalidates the release source, requires compatible stable Node/npm versions and OIDC availability, and checks the public npm registry for the exact package version. Only an explicit HTTP 404 permits publication; an existing version, authorization error, rate limit, or unavailable registry fails the job.
 
 The final command publishes the downloaded archive with `--ignore-scripts`, `--access public`, `--provenance`, the explicit public registry, and the validated `latest` or `next` channel. It does not repack from the publish checkout. The local SHA-256 release record and npm provenance are distinct evidence: the former checks transfer integrity within this run; the latter records publication provenance.
 
 Consumer installation requires Node.js 22+. Publication uses Node.js 24 and separately verifies Node.js >=22.14.0 and npm >=11.5.1 for OIDC support. A consumer's runtime requirement is not the publisher's npm requirement.
+
+## Claude Desktop release assets
+
+After successful npm publication, the separate `desktop` job downloads the same run's tested artifacts and runs `node scripts/release.mjs verify-artifacts`. It verifies the release context, both archive digests, and checksum-file content before attaching **secure-me-claude-desktop.zip** and **SHA256SUMS** through `scripts/attach-release.mjs`. Only this attachment job receives `contents: write`; it does not need npm credentials or OIDC publication rights. The attachment helper compares existing same-name assets byte-for-byte and uploads only missing files. A mismatch fails before uploading; existing and unrelated assets are never overwritten.
+
+The ZIP has one top-level `preprod-security-audit/` folder containing the shared `SKILL.md`, `assets/`, and `references/`. Codex-specific `agents/openai.yaml` is excluded. Audit content is copied unchanged from the version being released. This matches Claude's documented folder-based ZIP packaging; keep the shared description within its documented 200-character limit. [Claude custom skills documentation](https://support.claude.com/en/articles/12512198-how-to-create-custom-skills), checked November 7, 2026.
+
+For local packaging checks, the same export is available through:
+
+```sh
+npx secure-me-skill@latest export --output secure-me-claude-desktop.zip
+```
+
+The default output is `secure-me-claude-desktop.zip` in the current directory. Export does not import into Claude or change account settings. Use the [README installation instructions](https://github.com/hamza-hnt/Secure-Me#install) for Codex, Claude Code, and Desktop setup, invocation differences, and host-specific access limits. A prepared ZIP alone does not demonstrate a successful Desktop import or a completed Claude audit; record any real host validation separately.
 
 ## Failures and reruns
 
@@ -105,6 +121,7 @@ Consumer installation requires Node.js 22+. Publication uses Node.js 24 and sepa
 - **Authentication or stage-only rejection:** check the exact trusted-publisher fields, `npm` environment, direct-publish permission, configuration expiry, and OIDC permission. Do not add a token as a fallback.
 - **Failed matrix job:** rerun failed jobs after investigating the failure. Artifact names use the stable run ID; a rerun of the Linux/Node 24 job replaces that run's artifact with its newly tested archive. A publish-only retry uses the already-tested artifact for the same run.
 - **Expired or missing artifact:** rerun the full workflow to regenerate and retest the archive. Do not rebuild an untested replacement in the publish job.
+- **Desktop attachment failed after npm publication:** rerun the failed attachment job in the same run while artifacts remain available. Matching partial uploads are preserved and only missing files are uploaded; mismatched assets require investigation. Do not republish the npm version to repair a release attachment.
 - **Archive verification or registry error:** investigate and rerun the affected checks without bypassing the digest or unpublished-version gate.
 
 The repository defines these checks; a successful local run is not evidence that the hosted matrix or publication has completed. Keep the GitHub run and npm publication result as the release evidence.

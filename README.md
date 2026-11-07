@@ -8,7 +8,7 @@ Secure-Me is an agent skill for reviewing application security before a release.
 
 Use it for a repository review, selected components or pipelines, supplied architecture evidence, or a broader release-readiness assessment. **Nine modules cover 35 security domains through 167 original controls.** Missing evidence stays visible throughout the review.
 
-The [secure-me-skill npm package](https://www.npmjs.com/package/secure-me-skill) is a **zero-dependency installer**. It installs the `preprod-security-audit` skill; your agent conducts the assessment. Scanner tools and connected services are optional and are not bundled. Documentation is in English; reports default to English and can use another requested language.
+The [secure-me-skill npm package](https://www.npmjs.com/package/secure-me-skill) is a **zero-dependency installer and exporter** for Codex, Claude Code, and Claude Desktop. It distributes the same `preprod-security-audit` instructions; your agent conducts the assessment using its available tools. Scanners and connected services are optional and are not bundled. Documentation is in English; reports default to English and can use another requested language.
 
 ## Quick navigation
 
@@ -21,27 +21,60 @@ The [secure-me-skill npm package](https://www.npmjs.com/package/secure-me-skill)
 
 ## Install
 
-Requires **Node.js 22 or newer** and npm:
+CLI commands require **Node.js 22 or newer** and npm. A ready-made Desktop ZIP can be downloaded without Node.js.
+
+### Codex
 
 ```sh
 npx secure-me-skill@latest install
 ```
 
-This installs the full skill into `~/.agents/skills/preprod-security-audit`. Ask an agent that supports this directory to use `preprod-security-audit`, as shown below.
+The default remains `~/.agents/skills/preprod-security-audit`.
+
+### Claude Code
+
+```sh
+npx secure-me-skill@latest install --agent claude-code
+```
+
+The personal target is `~/.claude/skills/preprod-security-audit`. Add `--project` to use `.claude/skills/preprod-security-audit` under the current project. Invoke it with `/preprod-security-audit`. See the [official Claude Code skill documentation](https://code.claude.com/docs/en/skills).
+
+### Claude Desktop
+
+Download the latest [Claude Desktop ZIP](https://github.com/hamza-hnt/Secure-Me/releases/latest/download/secure-me-claude-desktop.zip) and [SHA256SUMS](https://github.com/hamza-hnt/Secure-Me/releases/latest/download/SHA256SUMS), select a specific [GitHub release](https://github.com/hamza-hnt/Secure-Me/releases), or generate a ZIP locally:
+
+```sh
+npx secure-me-skill@latest export --output secure-me-claude-desktop.zip
+```
+
+Without `--output`, `export` uses that filename in the current directory. It creates a ZIP for manual import; it does not change Claude account settings. The ZIP contains the `preprod-security-audit/` folder with `SKILL.md`, `assets/`, and `references/`; it omits Codex's `agents/openai.yaml`. The shared audit content is unchanged by export.
+
+In Claude Desktop, open **Customize > Skills**, use the add/upload option to import the ZIP, then enable the skill. Claude's custom Skills feature requires **code execution** to be enabled. Account, administrator, hosting, and product settings can affect availability. [Official custom skill instructions](https://support.claude.com/en/articles/12512198-how-to-create-custom-skills), checked November 7, 2026.
+
+Installing files for Claude Code does not by itself enable a skill in Desktop Cowork: Cowork uses the account's enabled skills. Import the ZIP for that route. [Claude Code guidance on Cowork and cloud sessions](https://code.claude.com/docs/en/skills#use-skills-in-cowork-and-cloud-sessions), checked November 7, 2026.
 
 ## Example usage
 
+| Host | Start the review |
+| --- | --- |
+| Codex | `Use $preprod-security-audit to review this repository before production.` |
+| Claude Code | `/preprod-security-audit Review this repository before production.` |
+| Claude Desktop | Enable the imported skill, then ask: `Use preprod-security-audit to review these supplied files before production.` |
+
+Add the same release context and boundaries in any host:
+
 ```text
-Use $preprod-security-audit to review this repository before production.
 We are releasing a multi-tenant API on a managed platform, with PostgreSQL
 and an external identity provider.
-Start with the local source, configuration, dependencies, and CI/CD definitions.
+Review the source, configuration, dependencies, and CI/CD evidence available here.
 Ask only unanswered questions that materially change the review.
 Write a Markdown report with findings, coverage limits, both graphs,
 and a prioritized correction and verification plan.
 ```
 
 For a bounded review, state the limits directly—for example, “manual local inspection only; no network, scanners, or project execution.” The skill preserves that scope and records what cannot be verified.
+
+Claude Code can review a repository made available to its session. In Desktop, provide files or use [Cowork with the chosen local folder access](https://support.claude.com/en/articles/13345190-get-started-with-claude-cowork). Enabling a skill alone grants no repository, cloud, shell, or scanner access. Available tools determine whether checks run or remain evidence gaps; a document-only review is still useful.
 
 You can also use the [self-contained skill folder](https://github.com/hamza-hnt/Secure-Me/blob/main/preprod-security-audit/SKILL.md) without the installer:
 
@@ -58,6 +91,9 @@ Write the report to /path/to/my-project/security-audits/release-review.md.
 # Install beneath the current project
 npx secure-me-skill@latest install --project
 
+# Install for Claude Code in the current project
+npx secure-me-skill@latest install --agent claude-code --project
+
 # Choose a skills parent directory
 npx secure-me-skill@latest install --dest "./custom-skills"
 
@@ -70,20 +106,23 @@ npx secure-me-skill@latest --help
 
 | Option | Behavior |
 | --- | --- |
-| `--project` | Uses `.agents/skills` beneath the current working directory. |
+| `--agent codex\|claude-code` | Selects the install target convention. `codex` is the default. |
+| `--project` | Uses `.agents/skills` for Codex or `.claude/skills` for Claude Code beneath the current directory. |
 | `--dest <directory>` | Selects the **parent** directory; the installer appends `preprod-security-audit`. Relative paths resolve from the current directory. Cannot be combined with `--project`. |
 | `--dry-run` | Describes the result without writing installation files, locks, or backups. `npx` may still download/cache the installer itself. |
 | `--force` | Replaces differing content after preserving the complete previous installation. Identical content stays unchanged. |
 
 Without `--force`, differing existing files are preserved and installation stops with an explanation. Backups are stored **outside the skills parent** and their exact location is printed. For the default installation, the backup is under `~/.agents/.secureme-backup-preprod-security-audit-<random>/preprod-security-audit`, outside the skill discovery tree. Symbolic-link targets and unsupported file types are rejected.
 
-The default home directory comes from `HOME`, then `USERPROFILE`, then the operating system. `CODEX_HOME` does not change the default. To select a legacy Codex directory explicitly in a POSIX shell:
+Codex resolves home from `HOME`, then `USERPROFILE`, then the operating system. Claude Code uses `USERPROFILE` first on Windows and `HOME` first elsewhere. For a personal Claude Code install, an absolute `CLAUDE_CONFIG_DIR`, when set, selects `<CLAUDE_CONFIG_DIR>/skills`; `--project` and `--dest` override that choice. `CODEX_HOME` does not change the Codex default. To select a legacy Codex directory explicitly in a POSIX shell:
 
 ```sh
 npx secure-me-skill@latest install --dest "${CODEX_HOME:-$HOME/.codex}/skills"
 ```
 
 Replace `latest` with an exact published version to pin the installer, or use `next` for a published prerelease. You can also copy the entire skill folder into another supported directory, preserving its name and relative structure.
+
+For ZIP export, `--output <zip>` selects the file and `--dry-run` previews without writing it. Export does not use install options such as `--agent`, `--project`, or `--force`; choose a new output filename if one already exists.
 
 ## How a review works
 
@@ -233,9 +272,20 @@ Routine CI and release validation use the same checks with different matrix size
 
 Each job runs `npm ci --ignore-scripts`, `npm test`, `npm run test:package`, and `npm run validate`. Package tests check archive contents/metadata, isolated installation, the actual npm executable shim, and installer behavior against the installed package. The tested bytes are saved as `.artifacts/package.tgz`.
 
+The automated checks also cover Claude Code installation paths and Desktop ZIP export from the packed npm package. They verify installation and archive behavior; host-level observations are recorded separately below.
+
 A published GitHub release must use exactly `v<package.version>`, resolve to the release event's commit, and belong to `origin/main`. All **nine release jobs** test that exact commit before the `npm` environment can publish the preserved Linux/Node 24 archive. Digest verification, npm OIDC trusted publishing, and provenance bind the release process to those tested bytes.
 
 Stable releases use `latest`; prereleases use `next`. Existing versions are rejected instead of silently republished or retagged. No stored npm token is used. The [publishing guide](https://github.com/hamza-hnt/Secure-Me/blob/main/docs/publishing.md) covers setup, first-package bootstrap, and failures.
+
+After npm publication, a separate release-assets job verifies the tested Desktop ZIP and attaches `secure-me-claude-desktop.zip` with `SHA256SUMS` to the GitHub release. The release record binds both the npm archive and Desktop ZIP to the same source version.
+
+### Claude host validation — November 7, 2026
+
+| Host | Observed result | Verification limit |
+| --- | --- | --- |
+| Claude Desktop native app | ZIP imported and enabled with all 16 files. A manual review of a synthetic two-file Node.js fixture produced a Markdown report with evidence, findings, a prioritized correction plan, and both Mermaid graphs. It identified the shell-injection path and secret fallback, and retained missing runtime/dependency evidence as unknowns. | Bounded smoke test only; no project execution, scanners, or advisory lookup. The report disclosed a failed local Mermaid render instead of claiming renderer validation. |
+| Claude Code 2.1.273 | The project-installed `preprod-security-audit` appeared in the session's `init.skills` discovery list. | An audit attempt was blocked by an expired OAuth session that could not refresh; audit execution was not verified. |
 
 ## Maintaining the skill
 
@@ -261,9 +311,9 @@ Commit subjects use `type(scope) : description`, for example `fix(report) : dist
 | [preprod-security-audit/SKILL.md](https://github.com/hamza-hnt/Secure-Me/blob/main/preprod-security-audit/SKILL.md) | Agent entrypoint and routing instructions. |
 | [references/](https://github.com/hamza-hnt/Secure-Me/tree/main/preprod-security-audit/references) | Questionnaire, audit method, controls, coverage map, priorities, and tooling procedures. |
 | [assets/report-template.md](https://github.com/hamza-hnt/Secure-Me/blob/main/preprod-security-audit/assets/report-template.md) | Report structure and graph contracts. |
-| [bin/](https://github.com/hamza-hnt/Secure-Me/tree/main/bin) and [lib/](https://github.com/hamza-hnt/Secure-Me/tree/main/lib) | Zero-dependency installer. |
+| [bin/](https://github.com/hamza-hnt/Secure-Me/tree/main/bin) and [lib/](https://github.com/hamza-hnt/Secure-Me/tree/main/lib) | Zero-dependency installer and Desktop ZIP exporter. |
 | [scripts/](https://github.com/hamza-hnt/Secure-Me/tree/main/scripts), [test/](https://github.com/hamza-hnt/Secure-Me/tree/main/test), [.github/workflows/](https://github.com/hamza-hnt/Secure-Me/tree/main/.github/workflows) | Validation, packaging, tests, and release automation. |
 
-The lightweight npm package contains the CLI, complete skill, README, and package metadata. Artwork, development tests, workflows, and publishing docs stay outside the archive. README file links use absolute GitHub URLs so they also work on npm.
+The lightweight npm package contains the CLI, exporter, complete skill, README, and package metadata. Artwork, development tests, workflows, and publishing docs stay outside the archive. The Desktop ZIP includes only the portable skill folder. README file links use absolute GitHub URLs so they also work on npm.
 
 The baroque banner's [exact prompt and generation method](https://github.com/hamza-hnt/Secure-Me/blob/main/docs/assets/security-baroque-prompt.txt) are recorded in the repository.
