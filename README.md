@@ -14,7 +14,51 @@ The skill and its documentation are written in English. Reports default to Engli
 
 This repository contains the source of the `preprod-security-audit` skill: instructions, a branching questionnaire, nine audit modules, a 35-domain coverage map, scanner execution procedures, evidence and prioritization rules, and a Markdown report template.
 
-It is currently a **skill source repository**. It does not provide an npm package, CLI, hosted scanner, or automated remediation engine. npm packaging is planned for a later iteration; there is no npm installation command or publishing workflow yet.
+The `secure-me-skill` npm package provides a **zero-dependency Node.js installer** for the complete skill. The installer copies the skill into a chosen directory; an agent performs the review. Scanners and connected services are optional and are not bundled.
+
+## Install
+
+Requires **Node.js 22 or newer** and npm. Install the latest stable release:
+
+```sh
+npx secure-me-skill@latest install
+```
+
+The default target is `~/.agents/skills/preprod-security-audit`. The installer resolves the home directory from `HOME`, then `USERPROFILE`, then the operating system's home directory. It does not use `CODEX_HOME` to override this default.
+
+```sh
+# Install for the current project
+npx secure-me-skill@latest install --project
+
+# Choose a skills parent directory; the skill folder is appended automatically
+npx secure-me-skill@latest install --dest "./custom-skills"
+
+# Preview an update, then replace a different installation with a backup
+npx secure-me-skill@latest install --force --dry-run
+npx secure-me-skill@latest install --force
+
+# Show all options
+npx secure-me-skill@latest --help
+```
+
+| Option | Behavior |
+| --- | --- |
+| `--project` | Uses `.agents/skills` beneath the current working directory. |
+| `--dest <directory>` | Uses a custom **parent** directory; do not append `preprod-security-audit` yourself. Relative paths resolve from the current directory. Cannot be combined with `--project`. |
+| `--dry-run` | Reports the intended result without writing installation files, locks, or backups. `npx` may still download/cache the installer itself. |
+| `--force` | Replaces differing content only after preserving the complete previous installation in a backup. Identical content stays unchanged. |
+
+Without `--force`, a differing installation is preserved and the command fails with an explanation. Backups live **outside the skills parent**, so they cannot be discovered as duplicate skills: for the default target, `~/.agents/.secureme-backup-preprod-security-audit-<random>/preprod-security-audit`. The command prints the exact backup location. Symbolic-link targets and unsupported file types are rejected.
+
+To use a legacy Codex directory explicitly, in a POSIX shell:
+
+```sh
+npx secure-me-skill@latest install --dest "${CODEX_HOME:-$HOME/.codex}/skills"
+```
+
+Use `secure-me-skill@next` for a published prerelease, or replace `latest` with an exact published version to pin the installer. The lightweight npm archive contains the CLI, the full skill, README, and package metadata; it excludes the banner artwork, development tests, workflows, and publishing documentation. The banner and documentation links in this README load from GitHub.
+
+The banner was generated with the built-in image generation tool; its [exact prompt and generation method](https://github.com/hamza-hnt/Secure-Me/blob/main/docs/assets/security-baroque-prompt.txt) are recorded in the repository.
 
 ## What the skill does
 
@@ -30,25 +74,25 @@ The skill can work with a repository alone. Runtime, cloud, identity-provider, a
 
 ## Audit coverage
 
-The nine modules contain **167 original audit controls**. Each control describes applicability, what to inspect, expected evidence and limitations, and correction/retest criteria. The [coverage map](preprod-security-audit/references/coverage-map.md) explicitly traces the original **35 security domains** to their control IDs across seven core modules, plus two conditional AI/client modules. Domains, module files, and automated checks are different units.
+The nine modules contain **167 original audit controls**. Each control describes applicability, what to inspect, expected evidence and limitations, and correction/retest criteria. The [coverage map](https://github.com/hamza-hnt/Secure-Me/blob/main/preprod-security-audit/references/coverage-map.md) explicitly traces the original **35 security domains** to their control IDs across seven core modules, plus two conditional AI/client modules. Domains, module files, and automated checks are different units.
 
 | Module | Controls | Coverage |
 | --- | --- | --- |
-| [Architecture](preprod-security-audit/references/modules/architecture.md) | ARCH-001–018 | Assets, exposure, trust boundaries, tenant/data flows, business abuse, shared responsibility, requirements, and architectural drift. |
-| [Identity and access](preprod-security-audit/references/modules/identity-access.md) | IAM-001–016 | Enrollment, authentication, MFA, recovery, sessions, OAuth/OIDC/SAML, authorization, tenant isolation, support access, and service identities. |
-| [Application and API](preprod-security-audit/references/modules/application-api.md) | APP-001–020 | Input/output handling, injection, browser controls, APIs, SSRF, files, webhooks, business logic, concurrency, resource limits, errors, and caching. |
-| [Data and secrets](preprod-security-audit/references/modules/data-secrets.md) | DATA-001–017 | Data lifecycle, storage access, secrets, cryptography, telemetry, exports, key management, hardcoded credentials, and unsafe secret fallbacks. |
-| [Infrastructure and deployment](preprod-security-audit/references/modules/infrastructure-deployment.md) | INFRA-001–019 | Cloud IAM, network/edge/DNS, hosts, containers, Kubernetes, serverless, IaC, fixed environment/security values, configuration precedence, and fail-safe defaults. |
-| [Supply chain](preprod-security-audit/references/modules/supply-chain.md) | SC-001–018 | Repository/dependency controls, CI/CD definition traversal, input trust, runners, secrets, artifacts, gate integrity, and deployment target/state binding. |
-| [Operations and resilience](preprod-security-audit/references/modules/operations-resilience.md) | OPS-001–015 | Logs, alerts, cost/availability controls, failures, backups, restoration, incidents, revocation, rollback, and ongoing vulnerability management. |
-| [AI and agents](preprod-security-audit/references/modules/ai-agents.md) | AI-001–020 | Prompt injection, RAG, tools/MCP, delegated authority, approvals, output handling, exfiltration, memory, budgets, and shutdown. |
-| [Mobile and desktop](preprod-security-audit/references/modules/mobile-desktop.md) | CLIENT-001–024 | Mobile, desktop, and extension storage, permissions, links, bridges, IPC, local services, release artifacts, and updates. |
+| [Architecture](https://github.com/hamza-hnt/Secure-Me/blob/main/preprod-security-audit/references/modules/architecture.md) | ARCH-001–018 | Assets, exposure, trust boundaries, tenant/data flows, business abuse, shared responsibility, requirements, and architectural drift. |
+| [Identity and access](https://github.com/hamza-hnt/Secure-Me/blob/main/preprod-security-audit/references/modules/identity-access.md) | IAM-001–016 | Enrollment, authentication, MFA, recovery, sessions, OAuth/OIDC/SAML, authorization, tenant isolation, support access, and service identities. |
+| [Application and API](https://github.com/hamza-hnt/Secure-Me/blob/main/preprod-security-audit/references/modules/application-api.md) | APP-001–020 | Input/output handling, injection, browser controls, APIs, SSRF, files, webhooks, business logic, concurrency, resource limits, errors, and caching. |
+| [Data and secrets](https://github.com/hamza-hnt/Secure-Me/blob/main/preprod-security-audit/references/modules/data-secrets.md) | DATA-001–017 | Data lifecycle, storage access, secrets, cryptography, telemetry, exports, key management, hardcoded credentials, and unsafe secret fallbacks. |
+| [Infrastructure and deployment](https://github.com/hamza-hnt/Secure-Me/blob/main/preprod-security-audit/references/modules/infrastructure-deployment.md) | INFRA-001–019 | Cloud IAM, network/edge/DNS, hosts, containers, Kubernetes, serverless, IaC, fixed environment/security values, configuration precedence, and fail-safe defaults. |
+| [Supply chain](https://github.com/hamza-hnt/Secure-Me/blob/main/preprod-security-audit/references/modules/supply-chain.md) | SC-001–018 | Repository/dependency controls, CI/CD definition traversal, input trust, runners, secrets, artifacts, gate integrity, and deployment target/state binding. |
+| [Operations and resilience](https://github.com/hamza-hnt/Secure-Me/blob/main/preprod-security-audit/references/modules/operations-resilience.md) | OPS-001–015 | Logs, alerts, cost/availability controls, failures, backups, restoration, incidents, revocation, rollback, and ongoing vulnerability management. |
+| [AI and agents](https://github.com/hamza-hnt/Secure-Me/blob/main/preprod-security-audit/references/modules/ai-agents.md) | AI-001–020 | Prompt injection, RAG, tools/MCP, delegated authority, approvals, output handling, exfiltration, memory, budgets, and shutdown. |
+| [Mobile and desktop](https://github.com/hamza-hnt/Secure-Me/blob/main/preprod-security-audit/references/modules/mobile-desktop.md) | CLIENT-001–024 | Mobile, desktop, and extension storage, permissions, links, bridges, IPC, local services, release artifacts, and updates. |
 
 Hosting branches cover static/CDN hosting, managed platforms, backend-as-a-service, serverless, VMs, containers, Kubernetes, and mixed deployments. Unsupported specialist surfaces, such as industrial equipment or custom hardware, require an explicit coverage limit and appropriate specialist review.
 
 ## Adaptive questionnaire
 
-[The questionnaire](preprod-security-audit/references/scoping-questions.md) is a routing mechanism, not a mandatory form.
+[The questionnaire](https://github.com/hamza-hnt/Secure-Me/blob/main/preprod-security-audit/references/scoping-questions.md) is a routing mechanism, not a mandatory form.
 
 If repository review has not already been included, it asks:
 
@@ -71,9 +115,9 @@ Discovered facts, user statements, and inferences remain separate. Missing answe
 
 ## Use the skill
 
-The self-contained skill folder is [`preprod-security-audit/`](preprod-security-audit/SKILL.md).
+The self-contained skill folder is [`preprod-security-audit/`](https://github.com/hamza-hnt/Secure-Me/blob/main/preprod-security-audit/SKILL.md).
 
-Load it directly by giving an agent the path to `SKILL.md`, or copy the entire folder into your agent's supported skill directory, preserving its name and relative structure. For Codex, the skill-creation convention is `$CODEX_HOME/skills`, or `~/.codex/skills` when `CODEX_HOME` is unset. Preserve any existing installation when updating it.
+After installation, ask an agent that supports this skill directory to use `preprod-security-audit`. You can also give the agent a direct path to `SKILL.md`, or copy the entire folder into another supported skill directory while preserving its name and relative structure.
 
 Example request when the skill is available by name:
 
@@ -121,7 +165,7 @@ The report includes a **per-job risk and evidence table** and represents the pip
 
 ## Tool-assisted review
 
-[Scanner execution procedures](preprod-security-audit/references/tooling.md) provide concrete commands, prerequisites, configuration handling, result interpretation, and evidence normalization:
+[Scanner execution procedures](https://github.com/hamza-hnt/Secure-Me/blob/main/preprod-security-audit/references/tooling.md) provide concrete commands, prerequisites, configuration handling, result interpretation, and evidence normalization:
 
 | Tool / procedure | Purpose | Boundary |
 | --- | --- | --- |
@@ -131,13 +175,13 @@ The report includes a **per-job risk and evidence table** and represents the pip
 | ZAP passive plan | Scoped crawling and passive analysis through the Automation Framework | Contacts the application and can cause effects; requires its own established live-test scope. |
 | ZAP active plan | Selected active tests against an agreed environment | Separate from passive analysis and source review; bounded attack scope and stop conditions. |
 
-These are executable **procedures for the agent**, not a bundled scanner service or npm runner. The agent uses available trusted tools within the chosen scope; manual-only/offline choices are respected. Missing tools, rules, caches, access, or compatible flags are recorded with a useful manual/evidence fallback. No result is invented and no proposed command is counted as a completed scan.
+These are executable **procedures for the agent**. The npm CLI installs the skill; it does not execute scanners. The agent uses available trusted tools within the chosen scope; manual-only/offline choices are respected. Missing tools, rules, caches, access, or compatible flags are recorded with a useful manual/evidence fallback. No result is invented and no proposed command is counted as a completed scan.
 
 Scanner logs/JSON are private working evidence. The report includes only minimal redacted findings and records actual versions, rules/advisory dates, targets, suppressions, exits, errors, and coverage. Tool output is contextualized against code, configuration, and impact before it becomes a confirmed finding.
 
 ## Dependency inventory without extra tooling requirements
 
-The [inventory procedure](preprod-security-audit/references/tooling.md#dependency-inventory-and-sboms) uses an existing **SBOM** (Software Bill of Materials) first, after checking its format, origin, coverage, and match to the reviewed revision or release artifact. If a usable inventory is missing, it uses available trusted Trivy to generate CycloneDX JSON. Inventory generation is separate from vulnerability scanning and does not require a successful advisory-database lookup.
+The [inventory procedure](https://github.com/hamza-hnt/Secure-Me/blob/main/preprod-security-audit/references/tooling.md#dependency-inventory-and-sboms) uses an existing **SBOM** (Software Bill of Materials) first, after checking its format, origin, coverage, and match to the reviewed revision or release artifact. If a usable inventory is missing, it uses available trusted Trivy to generate CycloneDX JSON. Inventory generation is separate from vulnerability scanning and does not require a successful advisory-database lookup.
 
 Native package-manager graphs can supplement missing package relationships. **Syft** is an optional alternative cataloger; **dependency-cruiser** is optional for JS/TS source-import relationships. The skill does not require all of them, install them automatically, or add a new audit module.
 
@@ -147,7 +191,7 @@ The full JSON remains private evidence. The report summarizes relevant component
 
 ## Focused checks for known vulnerabilities
 
-After inventory, [SC-003](preprod-security-audit/references/modules/supply-chain.md#lightweight-current-advisory-triage) checks a disclosed subset of critical dependencies against current maintainer/vendor advisories, OSV and GitHub Advisory Database records. CISA KEV provides a separate known-exploitation signal. Identity/crypto, exposed parsers, data-access components, privileged build tools and their relevant transitive dependencies receive priority.
+After inventory, [SC-003](https://github.com/hamza-hnt/Secure-Me/blob/main/preprod-security-audit/references/modules/supply-chain.md#lightweight-current-advisory-triage) checks a disclosed subset of critical dependencies against current maintainer/vendor advisories, OSV and GitHub Advisory Database records. CISA KEV provides a separate known-exploitation signal. Identity/crypto, exposed parsers, data-access components, privileged build tools and their relevant transitive dependencies receive priority.
 
 The report records exact ecosystem/package/source/version matching, CVE/GHSA/OSV aliases, affected ranges, published severity, exploitation evidence, local reachability, and a verified fixed version or mitigation. Component criticality and remediation priority are assessed separately from the advisory's severity. Critical/high and known-exploited issues come first; lower-severity issues remain relevant when local impact warrants it.
 
@@ -167,7 +211,7 @@ security-audits/
 
 The user can choose another destination. Existing reports are preserved. Reports are not stored inside the skill or committed, uploaded, or shared automatically.
 
-[The report template](preprod-security-audit/assets/report-template.md) contains:
+[The report template](https://github.com/hamza-hnt/Secure-Me/blob/main/preprod-security-audit/assets/report-template.md) contains:
 
 1. Executive assessment and bounded readiness recommendation.
 2. Calibrated context and question responses.
@@ -223,7 +267,16 @@ They do not reproduce or claim complete conformance with those standards. The re
 ```text
 secureme/
 ├── README.md
-├── .gitignore
+├── package.json
+├── package-lock.json
+├── bin/secureme.cjs
+├── lib/installer.cjs
+├── scripts/
+├── test/
+├── .github/workflows/
+├── docs/
+│   ├── publishing.md
+│   └── assets/
 └── preprod-security-audit/
     ├── SKILL.md
     ├── agents/
@@ -248,7 +301,23 @@ secureme/
         └── report-template.md
 ```
 
-There are no bundled scanner scripts or application runtime dependencies in this iteration.
+The installer uses Node.js built-ins and has no runtime or development package dependencies. No scanner binaries are included.
+
+## Tests and releases
+
+Pull requests and branch pushes run the reusable test workflow across **nine combinations**:
+
+| GitHub-hosted runner | Node.js versions |
+| --- | --- |
+| `ubuntu-latest` | 22, 24, 26 |
+| `macos-latest` | 22, 24, 26 |
+| `windows-latest` | 22, 24, 26 |
+
+Each combination runs `npm ci --ignore-scripts`, `npm test`, `npm run test:package`, and `npm run validate`. The package test creates an archive, checks its contents and metadata, installs it into an isolated consumer, exercises the actual npm executable shim, and reruns installer tests against the installed package. The successfully tested bytes are saved as `.artifacts/package.tgz`.
+
+Publishing a GitHub release starts the release workflow. It checks that the tag is exactly `v<package.version>`, resolves to the release event's commit, and that this commit belongs to `origin/main`. All nine tests run for that exact commit. Only after they succeed can the `npm` environment publish the preserved Linux/Node 24 archive, with digest verification and npm provenance, through npm OIDC trusted publishing. Stable releases use `latest`; prereleases use `next`. An existing version is rejected rather than silently republished or retagged.
+
+Maintainers: see the [publishing guide](https://github.com/hamza-hnt/Secure-Me/blob/main/docs/publishing.md) for the required npm trusted publisher, GitHub environment, and first-package bootstrap. No stored npm token is used by the release workflow.
 
 ## Maintaining the skill
 
@@ -269,7 +338,3 @@ type(scope) : description
 ```
 
 Examples: `feat(audit) : add serverless deployment controls`, `fix(report) : distinguish inferred dependency edges`, and `docs(readme) : clarify source-only review usage`.
-
-## Planned next iteration
-
-npm packaging and installation/distribution tooling will be designed in a later iteration. The skill folder is self-contained so packaging can preserve its existing relative references and report asset.
