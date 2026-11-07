@@ -71,7 +71,15 @@ The workflow does not promote an existing prerelease by retagging it. Release a 
 
 ## How the tested archive reaches npm
 
-[test.yml](https://github.com/hamza-hnt/Secure-Me/blob/main/.github/workflows/test.yml) runs `ubuntu-latest`, `macos-latest`, and `windows-latest`, each on Node.js **22, 24, and 26**: nine jobs. Every job runs:
+[test.yml](https://github.com/hamza-hnt/Secure-Me/blob/main/.github/workflows/test.yml) uses two test matrices. Branch pushes and pull requests run **five jobs** for faster feedback; published releases run the full **nine jobs** before npm publication.
+
+| Runner | Push / pull request | Published release |
+| --- | --- | --- |
+| `ubuntu-latest` | Node 22, 24, 26 | Node 22, 24, 26 |
+| `macos-latest` | Node 24 | Node 22, 24, 26 |
+| `windows-latest` | Node 24 | Node 22, 24, 26 |
+
+The reusable workflow's `full-matrix` input defaults to `true`. CI explicitly selects `false`; the release workflow explicitly selects `true` and preserves the Linux/Node 24 archive. Every test job runs the same checks:
 
 ```sh
 npm ci --ignore-scripts

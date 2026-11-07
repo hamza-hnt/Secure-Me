@@ -7,6 +7,10 @@ on:
         description: Exact source commit to test
         required: true
         type: string
+      full-matrix:
+        description: Test all nine OS and Node combinations instead of the five-job CI matrix
+        default: true
+        type: boolean
       upload-release-artifact:
         description: Preserve the Linux Node 24 archive for publication
         default: false
@@ -25,6 +29,9 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
         node: ['22', '24', '26']
+        # CI keeps all Node versions on Linux and Node 24 on macOS/Windows.
+        # Releases keep the complete cross-platform matrix.
+        exclude: ${{ fromJSON(inputs.full-matrix && '[]' || '[{"os":"macos-latest","node":"22"},{"os":"macos-latest","node":"26"},{"os":"windows-latest","node":"22"},{"os":"windows-latest","node":"26"}]') }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

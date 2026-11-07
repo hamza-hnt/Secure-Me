@@ -36,6 +36,7 @@ jobs:
     uses: ./.github/workflows/test.yml
     with:
       ref: ${{ needs.release.outputs.commit }}
+      full-matrix: true
       upload-release-artifact: true
   publish:
     name: Publish tested archive with npm OIDC
