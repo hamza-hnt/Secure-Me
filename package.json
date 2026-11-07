@@ -1,0 +1,32 @@
+{
+  "name": "secure-me-skill",
+  "version": "0.1.0",
+  "description": "Install the Secure-Me preproduction security audit skill with evidence graphs and actionable remediation plans.",
+  "license": "UNLICENSED",
+  "author": "hamza-hnt",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hamza-hnt/Secure-Me.git"
+  },
+  "homepage": "https://github.com/hamza-hnt/Secure-Me#readme",
+  "bugs": {
+    "url": "https://github.com/hamza-hnt/Secure-Me/issues"
+  },
+  "keywords": ["agent-skills", "codex", "security", "audit", "owasp", "preproduction", "sbom"],
+  "engines": {
+    "node": ">=22"
+  },
+  "bin": {
+    "secureme": "bin/secureme.cjs"
+  },
+  "files": ["bin/", "lib/", "preprod-security-audit/"],
+  "scripts": {
+    "test": "node --test test/installer.test.cjs test/release.test.mjs",
+    "validate": "node scripts/validate.mjs",
+    "test:package": "node scripts/test-package.mjs"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  }
+}

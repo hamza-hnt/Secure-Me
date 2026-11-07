@@ -1,2 +1,5 @@
 .DS_Store
 /security-audits/
+/node_modules/
+/.artifacts/
+*.tgz
