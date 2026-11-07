@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { copyFile, lstat, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -19,6 +19,25 @@ function run(command, args, options = {}) {
   if (result.error) throw result.error;
   assert.equal(result.status, 0, `${command} ${args.join(' ')}\n${result.stdout}\n${result.stderr}`);
   return result.stdout;
+}
+
+async function snapshotTree(directory) {
+  const entries = new Map();
+  async function visit(relative = '') {
+    const file = join(directory, relative);
+    const stat = await lstat(file);
+    assert.ok(!stat.isSymbolicLink(), `Unexpected skill symlink: ${file}`);
+    if (stat.isDirectory()) {
+      entries.set(relative, null);
+      for (const name of (await readdir(file)).sort()) await visit(join(relative, name));
+    } else {
+      assert.ok(stat.isFile(), `Unexpected skill file type: ${file}`);
+      entries.set(relative, await readFile(file));
+    }
+  }
+  await visit();
+  assert.equal(entries.get(''), null, `Expected a skill directory: ${directory}`);
+  return entries;
 }
 
 try {
@@ -58,6 +77,13 @@ try {
   for (const key of ['name', 'version', 'repository', 'bin']) assert.deepEqual(installed[key], manifest[key], `Packed ${key} differs from source.`);
   assert.deepEqual(installed.dependencies ?? {}, {}, 'The installer must have no runtime dependencies.');
   for (const hook of ['preinstall', 'install', 'postinstall', 'prepare']) assert.equal(installed.scripts?.[hook], undefined, `Unexpected lifecycle hook: ${hook}`);
+  const sourceTree = await snapshotTree(join(root, 'preprod-security-audit'));
+  const installedTree = await snapshotTree(join(installedRoot, 'preprod-security-audit'));
+  const inventory = (tree) => [...tree].map(([name, data]) => [name, data === null ? 'directory' : 'file']);
+  assert.deepEqual(inventory(installedTree), inventory(sourceTree), 'Packed skill paths or file types differ from source.');
+  for (const [name, data] of sourceTree) {
+    if (data !== null) assert.ok(data.equals(installedTree.get(name)), `Packed skill content differs from source: ${name}`);
+  }
 
   // Exercise npm's actual executable shim, including .cmd generation on Windows.
   assert.equal(npm(['exec', '--offline', '--', 'secureme', '--version'], { cwd: consumer }).trim(), manifest.version);
